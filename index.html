@@ -111,6 +111,19 @@ const {useState,useEffect,useCallback,createContext,useContext,useMemo}=React;
 
 const CATEGORIES=['Financiamentos','Renegociacoes financeiras','Aluguel','Agua','Contabilidade','Limpeza','Administrativo','Comunicacao','Marketing','Promocoes','Comissao','Cartao de credito','Impostos','Taxas','Manutencao','Sistema','Produtos para revenda','Insumos da barbearia'];
 const PAYMENT_METHODS=['PIX','Dinheiro','Cartao de credito','Cartao de debito','Boleto','Transferencia','Permuta','Voucher','Outro'];
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase();
+const MONTHS_FULL={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+function mapCategory(raw){const n=norm(raw);if(!n)return'Administrativo';
+  if(n.includes('emprestimo')||n.includes('financiament'))return'Financiamentos';
+  if(n.includes('renegocia'))return'Renegociacoes financeiras';
+  if(n.includes('aluguel'))return'Aluguel';if(n.includes('agua'))return'Agua';
+  if(n.includes('contabil'))return'Contabilidade';if(n.includes('limpeza'))return'Limpeza';
+  if(n.includes('administrativ'))return'Administrativo';if(n.includes('comunica'))return'Comunicacao';
+  if(n.includes('marketing')||n.includes('promo'))return'Marketing';if(n.includes('comiss'))return'Comissao';
+  if(n.includes('cartao'))return'Cartao de credito';if(n.includes('imposto'))return'Impostos';
+  if(n.includes('taxa'))return'Taxas';if(n.includes('manuten'))return'Manutencao';
+  if(n.includes('sistema'))return'Sistema';if(n.includes('revenda')||n.includes('produto'))return'Produtos para revenda';
+  if(n.includes('insumo'))return'Insumos da barbearia';return raw;}
 const PAY_STATUSES=['Em aberto','Pago','Vencido','Agendado','Renegociado','Cancelado'];
 const REC_TYPES=['Assinatura','PIX','Dinheiro','Cartao','Permuta'];
 const ASSET_CATS=['Moveis e utensilios','Equipamentos','Computadores','Veiculos','Ferramentas','Instalacoes','Outros'];
@@ -345,38 +358,53 @@ function ContasPagar({units:UL,user}){
   const edit=item=>{setForm({...item,unitId:String(item.unitId)});setEditing(item.id);setShowForm(true)};
   const handleImport=async e=>{
     const file=e.target.files[0];if(!file)return;
-    const data=await file.arrayBuffer();const wb=XLSX.read(data);const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    const months=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    const keys=Object.keys(rows[0]||{});
-    const hasMonthCols=keys.some(k=>months.some(m=>k.toLowerCase().startsWith(m)));
-    let records=[];
-    if(hasMonthCols){
-      for(const row of rows){
-        const ua=String(row['Unidade']||row['unidade']||'').toUpperCase().trim();
+    try{
+      const data=await file.arrayBuffer();const wb=XLSX.read(data);
+      // Modelo BPO Casa 77: aba "Geral" com meses (JANEIRO..DEZEMBRO) em colunas
+      const sn=wb.SheetNames.find(n=>norm(n)==='geral')||wb.SheetNames[0];
+      const grid=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',blankrows:false});
+      // localizar a linha de cabecalho (FORNECEDORES/UNIDADE + nomes de meses)
+      let hi=-1;
+      for(let i=0;i<Math.min(grid.length,15);i++){const cells=grid[i].map(norm);
+        if((cells.some(c=>c.includes('fornecedor'))||cells.includes('unidade'))&&cells.some(c=>MONTHS_FULL[c]!=null)){hi=i;break}}
+      if(hi<0){alert('Nao foi possivel reconhecer a planilha. Verifique se ha colunas FORNECEDORES, UNIDADE e meses (JANEIRO a DEZEMBRO).');return}
+      const header=grid[hi].map(norm);
+      const fornCol=header.findIndex(c=>c.includes('fornecedor'));
+      const uniCol=header.findIndex(c=>c==='unidade');
+      const contractCol=header.findIndex(c=>c.includes('contrato'));
+      const vencDayCol=header.findIndex(c=>c.startsWith('venc')&&!c.includes('final'));
+      const catCol=uniCol>0?uniCol-1:-1;
+      // colunas de meses com deteccao automatica de ano (vira o ano quando o mes recua)
+      const monthCols=[];let yr=new Date().getFullYear();let prevM=0;
+      header.forEach((c,idx)=>{const m=MONTHS_FULL[c];if(m){if(m<=prevM)yr++;monthCols.push({col:idx,month:m,year:yr});prevM=m}});
+      if(!monthCols.length){alert('Nenhuma coluna de mes encontrada na planilha.');return}
+      let costType='Fixo';const records=[];
+      for(let i=hi+1;i<grid.length;i++){
+        const row=grid[i];
+        // linhas de secao definem o tipo de custo
+        const sec=norm(row[contractCol>=0?contractCol:1]);
+        if(sec.includes('despesas fixas')){costType='Fixo';continue}
+        if(sec.includes('despesas vari')){costType='Variavel';continue}
+        if(sec==='comissoes'){costType='Variavel';continue}
+        const ua=String(row[uniCol]||'').toUpperCase().trim();
         const unit=UL.find(u=>u.abbreviation===ua);
-        const cat=row['Categoria']||row['categoria']||'Administrativo';
-        const sup=row['Fornecedor']||row['fornecedor']||'';
-        const ct=row['Tipo']||row['tipo']||'Fixo';
-        const desc=row['Descricao']||row['descricao']||row['Descrição']||'';
-        for(const k of keys){
-          const kl=k.toLowerCase();const mi=months.findIndex(m=>kl.startsWith(m));
-          if(mi>=0){const val=Number(row[k]);if(!val)continue;
-            const ym=kl.match(/(\d{4})/);
-            let yr=ym?parseInt(ym[1]):new Date().getFullYear();
-            if(!ym){yr=mi>=new Date().getMonth()?new Date().getFullYear():new Date().getFullYear()+1}
-            records.push({supplierName:sup,unitId:unit?unit.id:UL[0]?.id,category:cat,costType:ct,description:desc,dueDate:`${yr}-${String(mi+1).padStart(2,'0')}-10`,amount:String(val),status:'Em aberto'});
-          }
+        if(!unit)continue; // pula totais/subtotais e secoes (sem unidade valida)
+        const supplier=String(row[fornCol]||'').trim();
+        const category=mapCategory(catCol>=0?row[catCol]:'');
+        const contractRaw=contractCol>=0?String(row[contractCol]||'').trim():'';
+        const contract=contractRaw&&contractRaw!=='-'?contractRaw:'';
+        const dayM=(vencDayCol>=0?String(row[vencDayCol]):'').match(/\d+/);
+        let day=dayM?parseInt(dayM[0]):10;if(!day||day<1)day=10;
+        for(const mc of monthCols){
+          const val=Number(row[mc.col]);if(!val||val<=0)continue;
+          const dim=new Date(mc.year,mc.month,0).getDate();const dd=Math.min(day,dim);
+          records.push({supplierName:supplier,contractNumber:contract,unitId:unit.id,category,costType,dueDate:`${mc.year}-${String(mc.month).padStart(2,'0')}-${String(dd).padStart(2,'0')}`,amount:String(val),status:'Em aberto'});
         }
       }
-    }else{
-      for(const row of rows){
-        const ua=String(row['Unidade']||row['unidade']||'').toUpperCase().trim();
-        const unit=UL.find(u=>u.abbreviation===ua)||UL.find(u=>u.name.toLowerCase().includes((row['Unidade']||'').toLowerCase()));
-        records.push({supplierName:row['Fornecedor']||row['fornecedor']||'',contractNumber:row['Contrato']||row['contrato']||'',unitId:unit?unit.id:UL[0]?.id,category:row['Categoria']||row['categoria']||'Administrativo',subcategory:row['Subcategoria']||'',costType:row['Tipo Custo']||row['tipo']||'Fixo',description:row['Descricao']||row['descricao']||row['Descrição']||'',dueDate:row['Vencimento']||row['vencimento']||todayStr(),amount:String(Number(row['Valor']||row['valor']||0)),paymentMethod:row['Forma']||row['forma']||'',status:row['Status']||row['status']||'Em aberto',observation:row['Observacao']||row['obs']||''});
-      }
-    }
-    if(records.length>0){await api('/payable',{method:'POST',body:JSON.stringify(records)});alert(`${records.length} conta(s) importada(s)`);load()}
+      if(!records.length){alert('Nenhum lancamento encontrado para importar.');return}
+      await api('/payable',{method:'POST',body:JSON.stringify(records)});
+      alert(`${records.length} conta(s) importada(s)`);load();
+    }catch(err){alert('Erro ao importar planilha: '+(err.message||err))}
     setShowImport(false);
   };
   const t=todayStr();
@@ -429,7 +457,7 @@ function ContasPagar({units:UL,user}){
       <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowPay(null)}>Cancelar</button><button className="btn btn-primary" onClick={pay}>Confirmar Baixa</button></div>
     </Modal>
     <Modal show={showImport} onClose={()=>setShowImport(false)} title="Importar Planilha Excel">
-      <p style={{fontSize:13,color:'var(--text2)',marginBottom:16}}>Aceita modelo horizontal (meses jan-dez como colunas, deteccao automatica 2026/2027) e modelo padrao vertical. Siglas BA, RG, AV, PF mapeadas automaticamente.</p>
+      <p style={{fontSize:13,color:'var(--text2)',marginBottom:16}}>Modelo Controle Financeiro (aba "Geral"): colunas FORNECEDORES, UNIDADE, VENC. e os meses JANEIRO a DEZEMBRO. Cada valor mensal vira uma conta com vencimento no dia indicado. O ano vira automaticamente para o seguinte quando os meses recomecam em janeiro. Siglas BA, RG, AV, PF mapeadas automaticamente; linhas de total e cabecalhos de secao sao ignorados.</p>
       <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport}/>
       <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowImport(false)}>Fechar</button></div>
     </Modal>
