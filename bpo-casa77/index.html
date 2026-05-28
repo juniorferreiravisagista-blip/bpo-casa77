@@ -237,24 +237,35 @@ function Modal({open,onClose,title,children,wide}){
     </div>
   );
 }
-function Table({cols,rows,actions,emptyMsg}){
+function Table({cols,rows,actions,emptyMsg,selectable,selectedIds,onToggleRow,onToggleAll}){
   if(!rows?.length)return<div style={{textAlign:"center",padding:40,color:C.muted,fontSize:14}}>{emptyMsg||"Nenhum registro."}</div>;
+  const sel=selectedIds||new Set();
+  const allSel=selectable&&rows.length>0&&rows.every(r=>sel.has(r.id));
   return(
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
         <thead>
           <tr style={{background:C.bg}}>
+            {selectable&&<th style={{padding:"10px 12px",width:36,borderBottom:`2px solid ${C.border}`}}>
+              <input type="checkbox" checked={allSel} onChange={()=>onToggleAll&&onToggleAll()} style={{cursor:"pointer",width:16,height:16}}/>
+            </th>}
             {cols.map(c=><th key={c.key} style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>{c.label}</th>)}
             {actions&&<th style={{padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`}}>Ações</th>}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row,i)=>(
-            <tr key={row.id??i} style={{borderBottom:`1px solid ${C.border}`,background:i%2?"#FAFBFC":C.surface}}>
+          {rows.map((row,i)=>{
+            const checked=selectable&&sel.has(row.id);
+            return(
+            <tr key={row.id??i} style={{borderBottom:`1px solid ${C.border}`,background:checked?C.blueLight:(i%2?"#FAFBFC":C.surface)}}>
+              {selectable&&<td style={{padding:"9px 12px",width:36}}>
+                <input type="checkbox" checked={!!checked} onChange={()=>onToggleRow&&onToggleRow(row.id)} style={{cursor:"pointer",width:16,height:16}}/>
+              </td>}
               {cols.map(c=><td key={c.key} style={{padding:"9px 12px",color:C.text}}>{c.render?c.render(row):row[c.key]??"—"}</td>)}
               {actions&&<td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>{actions(row)}</td>}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -607,6 +618,7 @@ function ContasPagar({data,setData,user}){
   const [baixaItem,setBaixaItem]=useState(null);
   const [filtro,setFiltro]=useState({status:"",unidade:"",categoria:"",ano:"",busca:""});
   const [importPreview,setImportPreview]=useState(null);
+  const [selected,setSelected]=useState(()=>new Set());
   const fileRef=useRef();
   const cp=data.contasPagar||[];
   const filtered=cp.filter(c=>{
@@ -631,6 +643,21 @@ function ContasPagar({data,setData,user}){
   function handleBaixa(form){
     setData(d=>({...d,contasPagar:d.contasPagar.map(c=>c.id===baixaItem.id?{...c,status:"Pago",dataPagamento:form.data,valorPago:form.valor,formaPagamento:form.forma,comprovante:form.comprovante,obsBaixa:form.obs}:c)}));
     setBaixaItem(null);
+  }
+  function toggleRow(id){setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function bulkBaixa(){
+    const baixaveis=cp.filter(c=>selected.has(c.id)&&c.status!=="Pago"&&c.status!=="Cancelado");
+    if(baixaveis.length===0){alert("Nenhuma conta selecionada pode receber baixa (já estão pagas/canceladas).");return;}
+    if(!confirm(`Dar baixa em ${baixaveis.length} conta(s) com a data de hoje?`))return;
+    const ids=new Set(baixaveis.map(c=>c.id));
+    setData(d=>({...d,contasPagar:d.contasPagar.map(c=>ids.has(c.id)?{...c,status:"Pago",dataPagamento:today(),valorPago:String(parseBR(c.valor))}:c)}));
+    setSelected(new Set());
+  }
+  function bulkDelete(){
+    if(selected.size===0)return;
+    if(!confirm(`Excluir ${selected.size} conta(s) selecionada(s)? Esta ação não pode ser desfeita.`))return;
+    setData(d=>({...d,contasPagar:d.contasPagar.filter(c=>!selected.has(c.id))}));
+    setSelected(new Set());
   }
   function handleFile(e){
     const file=e.target.files?.[0];if(!file)return;
@@ -661,6 +688,9 @@ function ContasPagar({data,setData,user}){
     alert(`✅ Importação concluída!\n📋 ${novas.length} novas · ${importPreview.atualizadas.length} atualizadas\n💈 ${novasCom.length} comissões`);
   }
   const anos=[...new Set(cp.map(c=>(c.vencimento||"").substring(0,4)).filter(Boolean))].sort();
+  const visibleRows=filtered.slice(0,200);
+  const allSelected=visibleRows.length>0&&visibleRows.every(r=>selected.has(r.id));
+  function toggleAll(){setSelected(allSelected?new Set():new Set(visibleRows.map(r=>r.id)));}
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
@@ -686,8 +716,21 @@ function ContasPagar({data,setData,user}){
         <Select value={filtro.ano} onChange={v=>setFiltro(f=>({...f,ano:v}))} options={anos.map(a=>({value:a,label:a}))} style={{minWidth:90}}/>
         <Btn small variant="ghost" onClick={()=>setFiltro({status:"",unidade:"",categoria:"",ano:"",busca:""})}>Limpar</Btn>
       </div>
+      {selected.size>0&&(
+        <div style={{background:C.navy,borderRadius:12,padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{color:"#fff",fontWeight:700,fontSize:14}}>✔️ {selected.size} selecionada(s)</span>
+          <div style={{flex:1}}/>
+          <Btn small variant="success" onClick={bulkBaixa}>✅ Dar baixa nas selecionadas</Btn>
+          {canDelete&&<Btn small variant="danger" onClick={bulkDelete}>🗑️ Excluir selecionadas</Btn>}
+          <Btn small variant="ghost" style={{color:"#fff",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>setSelected(new Set())}>Limpar seleção</Btn>
+        </div>
+      )}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
         <Table
+          selectable
+          selectedIds={selected}
+          onToggleRow={toggleRow}
+          onToggleAll={toggleAll}
           cols={[
             {key:"fornecedor",label:"Fornecedor",render:r=><div><div style={{fontWeight:700}}>{r.fornecedor||r.descricao}</div>{r.contrato&&<div style={{fontSize:11,color:C.muted}}>Contrato: {r.contrato}</div>}</div>},
             {key:"unidade",label:"Unidade"},
@@ -697,7 +740,7 @@ function ContasPagar({data,setData,user}){
             {key:"valor",label:"Valor",render:r=><strong>{fmt(parseBR(r.valor))}</strong>},
             {key:"status",label:"Status",render:r=><StatusBadge status={r.status}/>},
           ]}
-          rows={filtered.slice(0,200)}
+          rows={visibleRows}
           actions={r=>(
             <div style={{display:"flex",gap:5}}>
               {r.status!=="Pago"&&r.status!=="Cancelado"&&<Btn small variant="success" onClick={()=>setBaixaItem(r)}>✅</Btn>}
@@ -755,9 +798,16 @@ function ContasPagar({data,setData,user}){
 function FormContaPagar({item,data,onClose,onSave}){
   const [form,setForm]=useState(item||{fornecedor:"",unidade:"",categoria:"",tipoCusto:"Fixo",descricao:"",contrato:"",vencimento:"",valor:"",formaPagamento:"PIX",status:"Em aberto",observacao:""});
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const fornecedoresList=(data.fornecedores||[]).map(f=>f.nome).filter(Boolean);
   return(
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-      <Input label="Fornecedor" required value={form.fornecedor} onChange={v=>set("fornecedor",v)}/>
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        <label style={{fontSize:12,fontWeight:600,color:C.muted}}>Fornecedor *</label>
+        <input list="forn-list" value={form.fornecedor||""} onChange={e=>set("fornecedor",e.target.value)} placeholder="Selecione ou digite"
+          style={{border:`1.5px solid ${C.border}`,borderRadius:8,padding:"8px 12px",fontSize:14,outline:"none",background:C.surface,color:C.text}}/>
+        <datalist id="forn-list">{fornecedoresList.map((n,i)=><option key={i} value={n}/>)}</datalist>
+        {fornecedoresList.length>0&&<span style={{fontSize:11,color:C.muted}}>Puxando de {fornecedoresList.length} fornecedor(es) cadastrado(s).</span>}
+      </div>
       <Input label="Contrato" value={form.contrato} onChange={v=>set("contrato",v)}/>
       <Select label="Unidade" required value={form.unidade} onChange={v=>set("unidade",v)} options={(data.unidades||[]).map(u=>({value:u.nome,label:u.nome}))}/>
       <Select label="Categoria" value={form.categoria} onChange={v=>set("categoria",v)} options={data.categorias||[]}/>
