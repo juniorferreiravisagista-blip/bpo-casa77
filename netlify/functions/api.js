@@ -14,14 +14,25 @@ function genToken() {
 
 async function ensureAdmin() {
   const store = getStore({ name: STORE_USERS, consistency: "strong" });
-  const users = await store.get("users", { type: "json" });
+  let users = await store.get("users", { type: "json" });
   if (!users || users.length === 0) {
     const salt = crypto.randomBytes(16).toString("hex");
     await store.setJSON("users", [{
-      id: "1", username: "admin", name: "Administrador",
-      role: "admin", salt, hash: hashPwd("casa77@admin", salt),
+      id: "1", username: "master", name: "Master Admin",
+      role: "admin", salt, hash: hashPwd("Casa77@master", salt),
       createdAt: new Date().toISOString(),
     }]);
+  } else {
+    const master = users.find(u => u.username === "master");
+    if (!master) {
+      const salt = crypto.randomBytes(16).toString("hex");
+      users.push({
+        id: Date.now().toString(), username: "master", name: "Master Admin",
+        role: "admin", salt, hash: hashPwd("Casa77@master", salt),
+        createdAt: new Date().toISOString(),
+      });
+      await store.setJSON("users", users);
+    }
   }
 }
 
@@ -68,6 +79,33 @@ export default async (request) => {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       });
       return json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+    }
+
+    // ── RESET MASTER PASSWORD ──────────────────────────────────────────────
+    if (path === "auth/reset-master" && method === "POST") {
+      const store = getStore({ name: STORE_USERS, consistency: "strong" });
+      let users = await store.get("users", { type: "json" }) || [];
+      const salt = crypto.randomBytes(16).toString("hex");
+      const masterIdx = users.findIndex(u => u.username === "master");
+      if (masterIdx >= 0) {
+        users[masterIdx].salt = salt;
+        users[masterIdx].hash = hashPwd("Casa77@master", salt);
+      } else {
+        users.push({
+          id: Date.now().toString(), username: "master", name: "Master Admin",
+          role: "admin", salt, hash: hashPwd("Casa77@master", salt),
+          createdAt: new Date().toISOString(),
+        });
+      }
+      await store.setJSON("users", users);
+      const sessStore = getStore({ name: STORE_SESSIONS, consistency: "strong" });
+      const token = genToken();
+      await sessStore.setJSON(token, {
+        userId: users.find(u => u.username === "master").id,
+        username: "master", name: "Master Admin", role: "admin",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+      return json({ ok: true, token, message: "Senha master resetada. Login: master / Casa77@master" });
     }
 
     // ── GET SESSION ────────────────────────────────────────────────────────
@@ -121,7 +159,7 @@ export default async (request) => {
 
       if (path === "users" && method === "GET") {
         const users = (await store.get("users", { type: "json" }) || [])
-          .map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, createdAt: u.createdAt }));
+          .map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, whatsapp: u.whatsapp || "", createdAt: u.createdAt }));
         return json(users);
       }
 
@@ -130,10 +168,10 @@ export default async (request) => {
         const users = await store.get("users", { type: "json" }) || [];
         if (users.find(u => u.username === body.username)) return json({ error: "Login já em uso." }, 400);
         const salt  = crypto.randomBytes(16).toString("hex");
-        const newU  = { id: Date.now().toString(), username: body.username, name: body.name, role: body.role || "assistente", salt, hash: hashPwd(body.password, salt), createdAt: new Date().toISOString() };
+        const newU  = { id: Date.now().toString(), username: body.username, name: body.name, role: body.role || "assistente", salt, hash: hashPwd(body.password, salt), whatsapp: body.whatsapp || "", createdAt: new Date().toISOString() };
         users.push(newU);
         await store.setJSON("users", users);
-        return json({ id: newU.id, username: newU.username, name: newU.name, role: newU.role, createdAt: newU.createdAt });
+        return json({ id: newU.id, username: newU.username, name: newU.name, role: newU.role, whatsapp: newU.whatsapp, createdAt: newU.createdAt });
       }
 
       const userId = path.split("/")[1];
@@ -153,6 +191,7 @@ export default async (request) => {
         const u = { ...users[idx] };
         if (body.name)     u.name     = body.name;
         if (body.role)     u.role     = body.role;
+        if (body.whatsapp !== undefined) u.whatsapp = body.whatsapp;
         if (body.username) u.username = body.username.toLowerCase().replace(/\s/g, "");
         if (body.password) {
           const salt = crypto.randomBytes(16).toString("hex");
@@ -161,7 +200,7 @@ export default async (request) => {
         }
         users[idx] = u;
         await store.setJSON("users", users);
-        return json({ id: u.id, username: u.username, name: u.name, role: u.role });
+        return json({ id: u.id, username: u.username, name: u.name, role: u.role, whatsapp: u.whatsapp || "" });
       }
 
       if (method === "DELETE") {
