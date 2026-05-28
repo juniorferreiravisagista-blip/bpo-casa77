@@ -66,6 +66,17 @@ const isProx7 = dt=>{if(!dt)return false;const t=new Date(),d7=new Date();d7.set
 let _id=Date.now(); const newId=()=>++_id;
 function parseBR(v){if(v===null||v===undefined||v==="")return 0;if(typeof v==="number")return isNaN(v)?0:v;const s=String(v).trim().replace(/[R$\s]/g,"").replace(/\./g,"").replace(",",".");const n=parseFloat(s);return isNaN(n)?0:n;}
 
+function addToGoogleCalendar(titulo,data,descricao){
+  if(!data)return alert("Esta conta não tem data de vencimento.");
+  const d=data.replace(/-/g,"");
+  const title=encodeURIComponent("💰 "+titulo);
+  const det=encodeURIComponent(descricao||"");
+  window.open(
+    `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${d}/${d}&details=${det}&sf=true`,
+    "_blank"
+  );
+}
+
 const MESES=["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
 const UNIDADE_MAP={"BA":"Barreirinhas","RG":"Renato Gonçalves","AV":"Avenida","PF":"Pessoa Física"};
 const CAT_MAP={"EMPRÉSTIMOS E FINANCIAMENTOS":"Financiamentos","RENEGOCIAÇÕES FINANCEIRAS":"Renegociações financeiras","ALUGUEL E AGUA":"Aluguel","ALUGUEL E ÁGUA":"Aluguel","CONTABILIDADE":"Contabilidade","LIMPEZA":"Limpeza","ADMINISTRATIVO":"Administrativo","COMUNICAÇÃO":"Comunicação","MARKETING E PROMOÇÕES":"Marketing","CARTÃO":"Cartão de crédito","COMISSÕES AVULSAS":"Comissão","COMISSÕES ASSINATURAS":"Comissão"};
@@ -295,7 +306,7 @@ function LoginScreen({onLogin}){
             {loading?"Entrando...":"Entrar"}
           </Btn>
         </div>
-        <p style={{textAlign:"center",color:C.muted,fontSize:12,marginTop:20}}>Primeiro acesso: admin / casa77@admin</p>
+        <p style={{textAlign:"center",color:C.muted,fontSize:12,marginTop:20}}>Primeiro acesso: master / Casa77@master</p>
       </div>
     </div>
   );
@@ -306,32 +317,81 @@ function GestaoUsuarios({currentUser}){
   const [users,setUsers]=useState([]);
   const [modal,setModal]=useState(false);
   const [editUser,setEditUser]=useState(null);
-  const [form,setForm]=useState({username:"",name:"",role:"assistente",password:""});
+  const [form,setForm]=useState({username:"",name:"",role:"assistente",password:"",whatsapp:""});
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [saving,setSaving]=useState(false);
+  const [onboardingUser,setOnboardingUser]=useState(null);
+
+  const siteUrl="https://bpo-casa77.netlify.app";
 
   useEffect(()=>{loadUsers();},[]);
   async function loadUsers(){
     try{const u=await API.getUsers();setUsers(u);}catch(e){setError(e.message);}
     setLoading(false);
   }
-  function openNew(){setForm({username:"",name:"",role:"assistente",password:""});setEditUser(null);setModal(true);}
-  function openEdit(u){setForm({username:u.username,name:u.name,role:u.role,password:""});setEditUser(u);setModal(true);}
+  function openNew(){setForm({username:"",name:"",role:"assistente",password:"",whatsapp:""});setEditUser(null);setModal(true);}
+  function openEdit(u){setForm({username:u.username,name:u.name,role:u.role,password:"",whatsapp:u.whatsapp||""});setEditUser(u);setModal(true);}
   async function save(){
     if(!form.name)return alert("Informe o nome.");
     if(!editUser&&!form.password)return alert("Informe a senha.");
     setSaving(true);
     try{
-      if(editUser)await API.updateUser(editUser.id,form);
-      else await API.createUser(form);
-      await loadUsers();setModal(false);
+      if(editUser){
+        await API.updateUser(editUser.id,form);
+        await loadUsers();setModal(false);
+      }else{
+        await API.createUser(form);
+        await loadUsers();setModal(false);
+        setOnboardingUser({name:form.name,username:form.username,password:form.password,role:form.role,whatsapp:form.whatsapp});
+      }
     }catch(e){alert(e.message);}
     setSaving(false);
   }
   async function del(u){
     if(!confirm(`Excluir usuário "${u.name}"?`))return;
     try{await API.deleteUser(u.id);await loadUsers();}catch(e){alert(e.message);}
+  }
+
+  function enviarOnboarding(u){
+    const perfil=u.role==="admin"?"Admin":u.role==="gerente"?"Gerente":"Assistente";
+    const msg=encodeURIComponent(
+      `💈 *BPO Casa 77 — Acesso ao Sistema*\n\n`+
+      `Olá, ${u.name}!\n\n`+
+      `Seu acesso ao sistema financeiro foi criado.\n\n`+
+      `🔗 *Link de acesso:*\n${siteUrl}\n\n`+
+      `👤 *Usuário:* ${u.username}\n`+
+      `🔑 *Senha:* ${u.password}\n`+
+      `🏷️ *Perfil:* ${perfil}\n\n`+
+      `Ao entrar, recomendamos alterar sua senha.\n\n`+
+      `Em caso de dúvidas, fale com o administrador.`
+    );
+    const fone=(u.whatsapp||"").replace(/\D/g,"");
+    if(fone){
+      window.open(`https://wa.me/55${fone}?text=${msg}`,"_blank");
+    }else{
+      window.open(`https://wa.me/?text=${msg}`,"_blank");
+    }
+  }
+
+  function enviarOnboardingExistente(u){
+    const perfil=u.role==="admin"?"Admin":u.role==="gerente"?"Gerente":"Assistente";
+    const msg=encodeURIComponent(
+      `💈 *BPO Casa 77 — Acesso ao Sistema*\n\n`+
+      `Olá, ${u.name}!\n\n`+
+      `Segue seu acesso ao sistema financeiro.\n\n`+
+      `🔗 *Link de acesso:*\n${siteUrl}\n\n`+
+      `👤 *Usuário:* ${u.username}\n`+
+      `🏷️ *Perfil:* ${perfil}\n\n`+
+      `Caso tenha esquecido sua senha, solicite ao administrador a redefinição.\n\n`+
+      `Em caso de dúvidas, fale com o administrador.`
+    );
+    const fone=(u.whatsapp||"").replace(/\D/g,"");
+    if(fone){
+      window.open(`https://wa.me/55${fone}?text=${msg}`,"_blank");
+    }else{
+      window.open(`https://wa.me/?text=${msg}`,"_blank");
+    }
   }
 
   if(loading)return<div style={{textAlign:"center",padding:60,color:C.muted}}>Carregando...</div>;
@@ -361,11 +421,13 @@ function GestaoUsuarios({currentUser}){
           cols={[
             {key:"name",label:"Nome",render:r=><div><div style={{fontWeight:700}}>{r.name}</div><div style={{fontSize:11,color:C.muted}}>{r.username}</div></div>},
             {key:"role",label:"Perfil",render:r=><RoleBadge role={r.role}/>},
+            {key:"whatsapp",label:"WhatsApp",render:r=>r.whatsapp?<span style={{fontSize:12,color:C.text}}>{r.whatsapp}</span>:<span style={{fontSize:12,color:C.muted}}>—</span>},
             {key:"createdAt",label:"Criado em",render:r=>fmtDate((r.createdAt||"").split("T")[0])},
           ]}
           rows={users}
           actions={r=>(
             <div style={{display:"flex",gap:6}}>
+              <Btn small variant="ghost" onClick={()=>enviarOnboardingExistente(r)} title="Enviar acesso via WhatsApp">📲</Btn>
               <Btn small variant="ghost" onClick={()=>openEdit(r)}>✏️ Editar</Btn>
               {r.id!==currentUser.userId&&<Btn small variant="danger" onClick={()=>del(r)}>🗑️</Btn>}
             </div>
@@ -388,13 +450,43 @@ function GestaoUsuarios({currentUser}){
               ⚠️ Ao alterar o login, o usuário precisará usar o novo nome para entrar.
             </div>}
           </div>
+          <Input label="WhatsApp" value={form.whatsapp} onChange={v=>setForm(f=>({...f,whatsapp:v}))} placeholder="(11) 99999-9999"/>
           <Select label="Perfil de Acesso" value={form.role} onChange={v=>setForm(f=>({...f,role:v}))} options={[{value:"admin",label:"Admin — Acesso total"},{value:"gerente",label:"Gerente — Financeiro completo"},{value:"assistente",label:"Assistente — Visualização e baixa"}]}/>
           <Input label={editUser?"Nova Senha (deixe vazio p/ manter)":"Senha"} type="password" value={form.password} onChange={v=>setForm(f=>({...f,password:v}))} required={!editUser}/>
+          {!editUser&&<div style={{background:C.orangeLight,borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:10,border:`1px solid ${C.orange}30`}}>
+            <span style={{fontSize:18}}>📲</span>
+            <span style={{fontSize:13,fontWeight:600,color:C.orange,lineHeight:1.4}}>Após salvar, você poderá enviar os dados de acesso pelo WhatsApp.</span>
+          </div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
             <Btn variant="ghost" onClick={()=>setModal(false)}>Cancelar</Btn>
             <Btn variant="primary" onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={!!onboardingUser} title="✅ Usuário Criado com Sucesso" onClose={()=>setOnboardingUser(null)}>
+        {onboardingUser&&(
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{background:C.greenLight,border:`1px solid ${C.green}40`,borderRadius:12,padding:16,textAlign:"center"}}>
+              <div style={{fontSize:28,marginBottom:8}}>✅</div>
+              <div style={{fontWeight:800,fontSize:16,color:C.green}}>Usuário criado!</div>
+              <div style={{fontSize:13,color:C.text,marginTop:6}}><strong>{onboardingUser.name}</strong> ({onboardingUser.username})</div>
+            </div>
+            <div style={{background:C.bg,borderRadius:10,padding:14,fontSize:13}}>
+              <div style={{fontWeight:700,marginBottom:8,color:C.text}}>Dados de acesso:</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <div><span style={{color:C.muted}}>Link:</span> <strong>{siteUrl}</strong></div>
+                <div><span style={{color:C.muted}}>Usuário:</span> <strong>{onboardingUser.username}</strong></div>
+                <div><span style={{color:C.muted}}>Senha:</span> <strong>{onboardingUser.password}</strong></div>
+                <div><span style={{color:C.muted}}>Perfil:</span> <strong>{onboardingUser.role==="admin"?"Admin":onboardingUser.role==="gerente"?"Gerente":"Assistente"}</strong></div>
+              </div>
+            </div>
+            <Btn variant="success" onClick={()=>{enviarOnboarding(onboardingUser);setOnboardingUser(null);}} style={{padding:"14px",fontSize:15}}>
+              📲 Enviar Acesso pelo WhatsApp
+            </Btn>
+            <Btn variant="ghost" onClick={()=>setOnboardingUser(null)} style={{fontSize:13}}>Fechar sem enviar</Btn>
+          </div>
+        )}
       </Modal>
     </div>
   );
@@ -422,6 +514,61 @@ function ModalBaixa({conta,onClose,onSave}){
         </div>
       </div>
     </Modal>
+  );
+}
+
+// ── MODAIS BAIXA EM LOTE ──────────────────────────────────────────────────────
+function ModalBaixaLote({contas,onClose,onSave}){
+  const totalVal=contas.reduce((s,c)=>s+parseBR(c.valor),0);
+  const [form,setForm]=useState({data:today(),forma:"PIX",obs:""});
+  return(
+    <Modal open wide title={`✅ Baixa em Lote — ${contas.length} conta(s)`} onClose={onClose}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{background:C.navy,borderRadius:12,padding:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+          <div><div style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:3}}>TOTAL SELECIONADO</div><div style={{fontSize:26,fontWeight:900,color:C.orange}}>{fmt(totalVal)}</div></div>
+          <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:3}}>{contas.length} CONTA(S)</div><div style={{fontSize:13,color:"rgba(255,255,255,.7)"}}>Todas serão marcadas como <strong style={{color:C.green}}>Pago</strong></div></div>
+        </div>
+        <div style={{maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+          {contas.map(c=>(
+            <div key={c.id} style={{background:C.bg,borderRadius:8,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+              <div><div style={{fontWeight:700,fontSize:13}}>{c.fornecedor||c.descricao}</div><div style={{fontSize:11,color:C.muted}}>{c.unidade} · {fmtDate(c.vencimento)}</div></div>
+              <div style={{fontWeight:800,fontSize:14,flexShrink:0}}>{fmt(parseBR(c.valor))}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{background:C.blueLight,borderRadius:10,padding:12,fontSize:12,color:C.blue,fontWeight:600}}>
+          📌 Data e forma de pagamento serão aplicadas em todas as contas selecionadas.
+        </div>
+        <Input label="Data do Pagamento" type="date" value={form.data} onChange={v=>setForm(f=>({...f,data:v}))}/>
+        <Select label="Forma de Pagamento" value={form.forma} onChange={v=>setForm(f=>({...f,forma:v}))} options={["PIX","Dinheiro","Cartão de crédito","Cartão de débito","Boleto","Transferência","Permuta","Voucher","Outro"]}/>
+        <Input label="Observação (opcional)" value={form.obs} onChange={v=>setForm(f=>({...f,obs:v}))}/>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
+          <Btn variant="success" onClick={()=>onSave(form)}>✅ Confirmar Baixa de {contas.length} conta(s) — {fmt(totalVal)}</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function BarraSeleção({selecionados,contas,onBaixaLote,onLimpar,cor}){
+  if(!selecionados.size)return null;
+  const itens=contas.filter(c=>selecionados.has(c.id));
+  const total=itens.reduce((s,c)=>s+parseBR(c.valor),0);
+  return(
+    <div style={{position:"sticky",bottom:16,zIndex:200,background:C.navy,borderRadius:14,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,.35)",border:`2px solid ${cor||C.orange}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:14}}>
+        <div style={{width:36,height:36,borderRadius:10,background:cor||C.orange,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:16,color:"#fff"}}>{selecionados.size}</div>
+        <div>
+          <div style={{color:"#fff",fontWeight:800,fontSize:15}}>{selecionados.size} conta(s) selecionada(s)</div>
+          <div style={{color:"rgba(255,255,255,.6)",fontSize:13}}>Total: <strong style={{color:C.orange}}>{fmt(total)}</strong></div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <Btn small variant="ghost" style={{color:"rgba(255,255,255,.6)",borderColor:"rgba(255,255,255,.2)"}} onClick={onLimpar}>Limpar seleção</Btn>
+        <Btn small variant="success" onClick={()=>onBaixaLote(itens)}>✅ Baixar {selecionados.size} de uma vez</Btn>
+      </div>
+    </div>
   );
 }
 
@@ -551,10 +698,13 @@ function Dashboard({data,setPage}){
 }
 
 // ── ROTINA DIÁRIA ─────────────────────────────────────────────────────────────
-function RotinaDiaria({data,setData}){
+function RotinaDiaria({data,setData,user}){
+  const isAdmin=user?.role==="admin";
   const cp=data.contasPagar||[];
   const [baixaModal,setBaixaModal]=useState(null);
-  const [filtro,setFiltro]=useState("hoje");
+  const [baixaLote,setBaixaLote]=useState(null);
+  const [selecionados,setSelecionados]=useState(new Set());
+  const [filtro,setFiltro]=useState("vencidos");
   const grupos={
     hoje:{label:"Vence Hoje",icon:"📅",items:cp.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado"&&isHoje(c.vencimento)),color:C.orange},
     vencidos:{label:"Vencidos",icon:"⚠️",items:cp.filter(c=>c.status==="Em aberto"&&isVencido(c.vencimento)),color:C.red},
@@ -563,37 +713,66 @@ function RotinaDiaria({data,setData}){
     semComp:{label:"Sem Comprovante",icon:"📎",items:cp.filter(c=>c.status==="Pago"&&!c.comprovante),color:C.muted},
   };
   const atual=grupos[filtro];
-  function handleBaixa(form){
-    setData(d=>({...d,contasPagar:d.contasPagar.map(c=>c.id===baixaModal.id?{...c,status:"Pago",dataPagamento:form.data,valorPago:form.valor,formaPagamento:form.forma,comprovante:form.comprovante,obsBaixa:form.obs}:c)}));
-    setBaixaModal(null);
-  }
+  function trocarFiltro(k){setFiltro(k);setSelecionados(new Set());}
+  function toggleItem(id){setSelecionados(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function toggleTodos(){const p=atual.items.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado");setSelecionados(prev=>prev.size===p.length?new Set():new Set(p.map(c=>c.id)));}
+  function handleBaixa(form){setData(d=>({...d,contasPagar:d.contasPagar.map(c=>c.id===baixaModal.id?{...c,status:"Pago",dataPagamento:form.data,valorPago:form.valor,formaPagamento:form.forma,comprovante:form.comprovante,obsBaixa:form.obs}:c)}));setBaixaModal(null);}
+  function handleBaixaLote(form){const ids=new Set(baixaLote.map(c=>c.id));setData(d=>({...d,contasPagar:d.contasPagar.map(c=>ids.has(c.id)?{...c,status:"Pago",dataPagamento:form.data,valorPago:parseBR(c.valor),formaPagamento:form.forma,obsBaixa:form.obs,baixaLote:true}:c)}));setSelecionados(new Set());setBaixaLote(null);}
+  const podeBaixarNoFiltro=atual.items.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado");
+  const todosSelecionados=podeBaixarNoFiltro.length>0&&selecionados.size===podeBaixarNoFiltro.length;
   return(
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      <div><h2 style={{margin:0,fontWeight:900,color:C.text}}>🗓️ Rotina Diária</h2><p style={{margin:"4px 0 0",color:C.muted,fontSize:13}}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:900,color:C.text}}>🗓️ Rotina Diária</h2>
+          <p style={{margin:"4px 0 0",color:C.muted,fontSize:13}}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
+        </div>
+        {isAdmin&&<div style={{background:C.orangeLight,border:`1px solid ${C.orange}40`,borderRadius:10,padding:"8px 14px",fontSize:12,color:C.orange,fontWeight:700}}>🔐 Admin — baixa em lote disponível</div>}
+      </div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
         {Object.entries(grupos).map(([k,g])=>(
-          <button key={k} onClick={()=>setFiltro(k)} style={{padding:"8px 16px",borderRadius:8,border:`2px solid ${filtro===k?g.color:C.border}`,background:filtro===k?g.color:C.surface,color:filtro===k?"#fff":C.text,fontWeight:700,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",gap:8}}>
+          <button key={k} onClick={()=>trocarFiltro(k)} style={{padding:"8px 16px",borderRadius:8,border:`2px solid ${filtro===k?g.color:C.border}`,background:filtro===k?g.color:C.surface,color:filtro===k?"#fff":C.text,fontWeight:700,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",gap:8}}>
             {g.icon} {g.label} <span style={{background:filtro===k?"rgba(255,255,255,.3)":C.bg,borderRadius:10,padding:"1px 8px",fontSize:11,fontWeight:800,color:filtro===k?"#fff":C.muted}}>{g.items.length}</span>
           </button>
         ))}
       </div>
+      {isAdmin&&podeBaixarNoFiltro.length>0&&(
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",display:"flex",alignItems:"center",gap:12}}>
+          <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{width:18,height:18,accentColor:C.orange,cursor:"pointer"}}/>
+          <span style={{fontSize:13,fontWeight:600,color:C.text}}>{todosSelecionados?"Desmarcar todos":`Selecionar todos (${podeBaixarNoFiltro.length})`}</span>
+          {selecionados.size>0&&<span style={{marginLeft:"auto",fontSize:13,color:C.orange,fontWeight:700}}>{selecionados.size} selecionado(s) · {fmt(atual.items.filter(c=>selecionados.has(c.id)).reduce((s,c)=>s+parseBR(c.valor),0))}</span>}
+        </div>
+      )}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {atual.items.length===0&&<div style={{textAlign:"center",padding:40,color:C.muted,background:C.surface,borderRadius:12,border:`1px solid ${C.border}`}}>✅ Nenhuma conta nessa categoria</div>}
-        {atual.items.map(c=>(
-          <div key={c.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`4px solid ${atual.color}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-            <div>
-              <div style={{fontWeight:800,color:C.text,fontSize:15}}>{c.fornecedor||c.descricao}</div>
-              <div style={{fontSize:12,color:C.muted,marginTop:2}}>{c.unidade} · {c.categoria} · Venc: <span style={{color:isVencido(c.vencimento)&&c.status!=="Pago"?C.red:C.muted,fontWeight:600}}>{fmtDate(c.vencimento)}</span></div>
+        {atual.items.map(c=>{
+          const sel=selecionados.has(c.id);
+          const podeSel=isAdmin&&c.status!=="Pago"&&c.status!=="Cancelado";
+          return(
+            <div key={c.id} onClick={()=>podeSel&&toggleItem(c.id)}
+              style={{background:sel?"#FEF0E4":C.surface,border:`1px solid ${sel?C.orange:C.border}`,borderLeft:`4px solid ${sel?C.orange:atual.color}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,cursor:podeSel?"pointer":"default",transition:"background .15s"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                {isAdmin&&c.status!=="Pago"&&c.status!=="Cancelado"&&(
+                  <input type="checkbox" checked={sel} onChange={()=>toggleItem(c.id)} onClick={e=>e.stopPropagation()} style={{width:18,height:18,accentColor:C.orange,cursor:"pointer",flexShrink:0}}/>
+                )}
+                <div>
+                  <div style={{fontWeight:800,color:C.text,fontSize:15}}>{c.fornecedor||c.descricao}</div>
+                  <div style={{fontSize:12,color:C.muted,marginTop:2}}>{c.unidade} · {c.categoria} · Venc: <span style={{color:isVencido(c.vencimento)&&c.status!=="Pago"?C.red:C.muted,fontWeight:600}}>{fmtDate(c.vencimento)}</span></div>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}} onClick={e=>e.stopPropagation()}>
+                <div style={{fontWeight:900,fontSize:18,color:C.text}}>{fmt(parseBR(c.valor))}</div>
+                <StatusBadge status={c.status}/>
+                <Btn small variant="ghost" onClick={()=>addToGoogleCalendar(c.fornecedor||c.descricao,c.vencimento,`Valor: ${fmt(parseBR(c.valor))} | Unidade: ${c.unidade} | Categoria: ${c.categoria}`)}>📅</Btn>
+                {c.status!=="Pago"&&c.status!=="Cancelado"&&<Btn small variant="success" onClick={()=>setBaixaModal(c)}>✅ Baixar</Btn>}
+              </div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{fontWeight:900,fontSize:18}}>{fmt(parseBR(c.valor))}</div>
-              <StatusBadge status={c.status}/>
-              {c.status!=="Pago"&&c.status!=="Cancelado"&&<Btn small variant="success" onClick={()=>setBaixaModal(c)}>✅ Baixar</Btn>}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+      {isAdmin&&<BarraSeleção selecionados={selecionados} contas={atual.items} onLimpar={()=>setSelecionados(new Set())} onBaixaLote={itens=>setBaixaLote(itens)} cor={atual.color}/>}
       {baixaModal&&<ModalBaixa conta={baixaModal} onClose={()=>setBaixaModal(null)} onSave={handleBaixa}/>}
+      {baixaLote&&<ModalBaixaLote contas={baixaLote} onClose={()=>setBaixaLote(null)} onSave={handleBaixaLote}/>}
     </div>
   );
 }
@@ -607,6 +786,8 @@ function ContasPagar({data,setData,user}){
   const [baixaItem,setBaixaItem]=useState(null);
   const [filtro,setFiltro]=useState({status:"",unidade:"",categoria:"",ano:"",busca:""});
   const [importPreview,setImportPreview]=useState(null);
+  const [baixaLote,setBaixaLote]=useState(null);
+  const [selecionados,setSelecionados]=useState(new Set());
   const fileRef=useRef();
   const cp=data.contasPagar||[];
   const filtered=cp.filter(c=>{
@@ -621,6 +802,10 @@ function ContasPagar({data,setData,user}){
   const pago=filtered.filter(c=>c.status==="Pago").reduce((s,c)=>s+parseBR(c.valor),0);
   const aberto=filtered.filter(c=>c.status==="Em aberto").reduce((s,c)=>s+parseBR(c.valor),0);
   const vencido=filtered.filter(c=>c.status==="Em aberto"&&isVencido(c.vencimento)).reduce((s,c)=>s+parseBR(c.valor),0);
+  const exibidos=filtered.slice(0,200);
+  const podeSeletar=exibidos.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado");
+  const todosSel=podeSeletar.length>0&&selecionados.size===podeSeletar.length;
+  const isAdmin=user?.role==="admin";
 
   function save(item){
     if(item.id)setData(d=>({...d,contasPagar:d.contasPagar.map(c=>c.id===item.id?item:c)}));
@@ -632,6 +817,9 @@ function ContasPagar({data,setData,user}){
     setData(d=>({...d,contasPagar:d.contasPagar.map(c=>c.id===baixaItem.id?{...c,status:"Pago",dataPagamento:form.data,valorPago:form.valor,formaPagamento:form.forma,comprovante:form.comprovante,obsBaixa:form.obs}:c)}));
     setBaixaItem(null);
   }
+  function handleBaixaLote(form){const ids=new Set(baixaLote.map(c=>c.id));setData(d=>({...d,contasPagar:d.contasPagar.map(c=>ids.has(c.id)?{...c,status:"Pago",dataPagamento:form.data,valorPago:parseBR(c.valor),formaPagamento:form.forma,obsBaixa:form.obs,baixaLote:true}:c)}));setSelecionados(new Set());setBaixaLote(null);}
+  function toggleItem(id){setSelecionados(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function toggleTodos(){setSelecionados(prev=>prev.size===podeSeletar.length?new Set():new Set(podeSeletar.map(c=>c.id)));}
   function handleFile(e){
     const file=e.target.files?.[0];if(!file)return;
     const reader=new FileReader();
@@ -686,26 +874,54 @@ function ContasPagar({data,setData,user}){
         <Select value={filtro.ano} onChange={v=>setFiltro(f=>({...f,ano:v}))} options={anos.map(a=>({value:a,label:a}))} style={{minWidth:90}}/>
         <Btn small variant="ghost" onClick={()=>setFiltro({status:"",unidade:"",categoria:"",ano:"",busca:""})}>Limpar</Btn>
       </div>
+      {isAdmin&&podeSeletar.length>0&&(
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",display:"flex",alignItems:"center",gap:12}}>
+          <input type="checkbox" checked={todosSel} onChange={toggleTodos} style={{width:18,height:18,accentColor:C.orange,cursor:"pointer"}}/>
+          <span style={{fontSize:13,fontWeight:600,color:C.text}}>{todosSel?"Desmarcar todos":`Selecionar todos os pendentes (${podeSeletar.length})`}</span>
+          {selecionados.size>0&&<span style={{marginLeft:"auto",fontSize:13,color:C.orange,fontWeight:700}}>{selecionados.size} selecionado(s) · {fmt(exibidos.filter(c=>selecionados.has(c.id)).reduce((s,c)=>s+parseBR(c.valor),0))}</span>}
+        </div>
+      )}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-        <Table
-          cols={[
-            {key:"fornecedor",label:"Fornecedor",render:r=><div><div style={{fontWeight:700}}>{r.fornecedor||r.descricao}</div>{r.contrato&&<div style={{fontSize:11,color:C.muted}}>Contrato: {r.contrato}</div>}</div>},
-            {key:"unidade",label:"Unidade"},
-            {key:"categoria",label:"Categoria"},
-            {key:"tipoCusto",label:"Tipo",render:r=><Badge color={r.tipoCusto==="Fixo"?"blue":"orange"}>{r.tipoCusto||"—"}</Badge>},
-            {key:"vencimento",label:"Vencimento",render:r=><span style={{color:isVencido(r.vencimento)&&r.status!=="Pago"?C.red:C.text,fontWeight:isVencido(r.vencimento)&&r.status!=="Pago"?700:400}}>{fmtDate(r.vencimento)}</span>},
-            {key:"valor",label:"Valor",render:r=><strong>{fmt(parseBR(r.valor))}</strong>},
-            {key:"status",label:"Status",render:r=><StatusBadge status={r.status}/>},
-          ]}
-          rows={filtered.slice(0,200)}
-          actions={r=>(
-            <div style={{display:"flex",gap:5}}>
-              {r.status!=="Pago"&&r.status!=="Cancelado"&&<Btn small variant="success" onClick={()=>setBaixaItem(r)}>✅</Btn>}
-              {canDelete&&<Btn small variant="ghost" onClick={()=>{setEditItem(r);setModal("new");}}>✏️</Btn>}
-              {canDelete&&<Btn small variant="danger" onClick={()=>del(r.id)}>🗑️</Btn>}
-            </div>
-          )}
-        />
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead>
+              <tr style={{background:C.bg}}>
+                {isAdmin&&<th style={{width:44,padding:"10px 8px",borderBottom:`2px solid ${C.border}`}}/>}
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Fornecedor</th>
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Unidade</th>
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Categoria</th>
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Tipo</th>
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Vencimento</th>
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Valor</th>
+                <th style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>Status</th>
+                <th style={{padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`}}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exibidos.length===0&&<tr><td colSpan={isAdmin?9:8} style={{textAlign:"center",padding:40,color:C.muted,fontSize:14}}>Nenhum registro.</td></tr>}
+              {exibidos.map((r,i)=>(
+                <tr key={r.id??i} onClick={()=>isAdmin&&r.status!=="Pago"&&r.status!=="Cancelado"&&toggleItem(r.id)} style={{borderBottom:`1px solid ${C.border}`,background:selecionados.has(r.id)?"#FEF0E4":i%2?"#FAFBFC":C.surface,cursor:isAdmin&&r.status!=="Pago"?"pointer":"default"}}>
+                  {isAdmin&&<td style={{padding:"8px 8px"}} onClick={e=>e.stopPropagation()}>{r.status!=="Pago"&&r.status!=="Cancelado"&&<input type="checkbox" checked={selecionados.has(r.id)} onChange={()=>toggleItem(r.id)} style={{width:17,height:17,accentColor:C.orange,cursor:"pointer"}}/>}</td>}
+                  <td style={{padding:"9px 12px",color:C.text}}><div><div style={{fontWeight:700}}>{r.fornecedor||r.descricao}</div>{r.contrato&&<div style={{fontSize:11,color:C.muted}}>Contrato: {r.contrato}</div>}</div></td>
+                  <td style={{padding:"9px 12px",color:C.text}}>{r.unidade??"—"}</td>
+                  <td style={{padding:"9px 12px",color:C.text}}>{r.categoria??"—"}</td>
+                  <td style={{padding:"9px 12px",color:C.text}}><Badge color={r.tipoCusto==="Fixo"?"blue":"orange"}>{r.tipoCusto||"—"}</Badge></td>
+                  <td style={{padding:"9px 12px",color:C.text}}><span style={{color:isVencido(r.vencimento)&&r.status!=="Pago"?C.red:C.text,fontWeight:isVencido(r.vencimento)&&r.status!=="Pago"?700:400}}>{fmtDate(r.vencimento)}</span></td>
+                  <td style={{padding:"9px 12px",color:C.text}}><strong>{fmt(parseBR(r.valor))}</strong></td>
+                  <td style={{padding:"9px 12px",color:C.text}}><StatusBadge status={r.status}/></td>
+                  <td style={{padding:"8px 12px",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
+                    <div style={{display:"flex",gap:5}}>
+                      {r.status!=="Pago"&&r.status!=="Cancelado"&&<Btn small variant="success" onClick={()=>setBaixaItem(r)}>✅</Btn>}
+                      <Btn small variant="ghost" onClick={()=>addToGoogleCalendar(r.fornecedor||r.descricao,r.vencimento,`Valor: ${fmt(parseBR(r.valor))} | Unidade: ${r.unidade} | Categoria: ${r.categoria}`)}>📅</Btn>
+                      {canDelete&&<Btn small variant="ghost" onClick={()=>{setEditItem(r);setModal("new");}}>✏️</Btn>}
+                      {canDelete&&<Btn small variant="danger" onClick={()=>del(r.id)}>🗑️</Btn>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {filtered.length>200&&<div style={{padding:12,textAlign:"center",color:C.muted,fontSize:13,borderTop:`1px solid ${C.border}`}}>Exibindo 200 de {filtered.length} registros. Use os filtros.</div>}
       </div>
       {modal==="new"&&canImport&&(
@@ -749,6 +965,8 @@ function ContasPagar({data,setData,user}){
         </Modal>
       )}
       {baixaItem&&<ModalBaixa conta={baixaItem} onClose={()=>setBaixaItem(null)} onSave={handleBaixa}/>}
+      {isAdmin&&<BarraSeleção selecionados={selecionados} contas={exibidos} onLimpar={()=>setSelecionados(new Set())} onBaixaLote={itens=>setBaixaLote(itens)} cor={C.orange}/>}
+      {baixaLote&&<ModalBaixaLote contas={baixaLote} onClose={()=>setBaixaLote(null)} onSave={handleBaixaLote}/>}
     </div>
   );
 }
@@ -835,6 +1053,15 @@ function Comissoes({data,setData,user}){
           actions={r=>(
             <div style={{display:"flex",gap:5}}>
               <Btn small variant="secondary" onClick={()=>enviarWhatsApp(r)}>📲 NF</Btn>
+              <Btn small variant="ghost" onClick={()=>{
+                if(!r.mesReferencia)return;
+                const [ano,mes]=r.mesReferencia.split("-");
+                addToGoogleCalendar(
+                  `Comissão Avulso/Produto — ${r.barbeiro}`,
+                  `${ano}-${mes}-05`,
+                  `Valor: ${fmt(parseBR(r.comissaoAvulso)+parseBR(r.comissaoProduto))} | Unidade: ${r.unidade} | 5º dia útil`
+                );
+              }}>📅</Btn>
               {user.role!=="assistente"&&<Btn small variant="ghost" onClick={()=>{setEditItem(r);setModal(true);}}>✏️</Btn>}
             </div>
           )}
@@ -849,7 +1076,12 @@ function Comissoes({data,setData,user}){
       )}
       {modal&&user.role!=="assistente"&&(
         <Modal open wide title={editItem?"✏️ Editar Comissão":"➕ Nova Comissão"} onClose={()=>{setModal(false);setEditItem(null);}}>
-          <FormComissao item={editItem} data={data} onClose={()=>{setModal(false);setEditItem(null);}} onSave={save}/>
+          <FormComissao item={editItem} data={data} onClose={()=>{setModal(false);setEditItem(null);}} onSave={(item,shouldSend)=>{
+            save(item);
+            if(shouldSend){
+              setTimeout(()=>enviarWhatsApp({...item,total:parseBR(item.comissaoAvulso)+parseBR(item.comissaoAssinatura)+parseBR(item.comissaoProduto)+parseBR(item.bonificacao)}),600);
+            }
+          }}/>
         </Modal>
       )}
     </div>
@@ -857,6 +1089,7 @@ function Comissoes({data,setData,user}){
 }
 function FormComissao({item,data,onClose,onSave}){
   const [form,setForm]=useState(item||{barbeiro:"",unidade:"",mesReferencia:today().substring(0,7),comissaoAvulso:"",comissaoAssinatura:"",comissaoProduto:"",bonificacao:"",statusNF:"Pendente",statusPagamento:"Pendente",observacao:""});
+  const [enviarNF,setEnviarNF]=useState(true);
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const total=parseBR(form.comissaoAvulso)+parseBR(form.comissaoAssinatura)+parseBR(form.comissaoProduto)+parseBR(form.bonificacao);
   return(
@@ -871,10 +1104,25 @@ function FormComissao({item,data,onClose,onSave}){
       <div style={{background:C.blueLight,borderRadius:10,padding:14}}><div style={{fontSize:11,fontWeight:700,color:C.blue}}>TOTAL</div><div style={{fontSize:24,fontWeight:900}}>{fmt(total)}</div></div>
       <Select label="Status NF" value={form.statusNF} onChange={v=>set("statusNF",v)} options={["Pendente","Solicitada","Recebida"]}/>
       <Select label="Status Pagamento" value={form.statusPagamento} onChange={v=>set("statusPagamento",v)} options={["Pendente","Pago"]}/>
+      <div style={{gridColumn:"1/-1",background:C.orangeLight,borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:10,border:`1px solid ${C.orange}30`}}>
+        <input
+          type="checkbox"
+          id="enviarNFCheck"
+          checked={enviarNF}
+          onChange={e=>setEnviarNF(e.target.checked)}
+          style={{width:18,height:18,accentColor:C.orange,cursor:"pointer",flexShrink:0}}
+        />
+        <label htmlFor="enviarNFCheck" style={{fontSize:13,fontWeight:700,color:C.orange,cursor:"pointer",lineHeight:1.4}}>
+          📲 Enviar solicitação de Nota Fiscal pelo WhatsApp ao finalizar
+        </label>
+      </div>
       <Input label="Observação" value={form.observacao} onChange={v=>set("observacao",v)} style={{gridColumn:"1/-1"}}/>
       <div style={{gridColumn:"1/-1",display:"flex",gap:10,justifyContent:"flex-end"}}>
         <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn variant="primary" onClick={()=>{if(!form.barbeiro)return alert("Selecione o barbeiro.");onSave(form);}}>Salvar</Btn>
+        <Btn variant="primary" onClick={()=>{
+          if(!form.barbeiro)return alert("Selecione o barbeiro.");
+          onSave(form,enviarNF);
+        }}>Salvar</Btn>
       </div>
     </div>
   );
@@ -1017,6 +1265,34 @@ function App(){
     });
   },[]);
 
+  useEffect(()=>{
+    if(!currentUser||!data.contasPagar)return;
+    const cp=data.contasPagar||[];
+    const vencidos=cp.filter(c=>c.status==="Em aberto"&&isVencido(c.vencimento));
+    const hoje=cp.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado"&&isHoje(c.vencimento));
+    const total=arr=>arr.reduce((s,c)=>s+parseBR(c.valor),0);
+    if("Notification" in window){
+      Notification.requestPermission().then(perm=>{
+        if(perm==="granted"){
+          if(vencidos.length>0){
+            new Notification("⚠️ BPO Casa 77 — Contas Vencidas",{
+              body:`${vencidos.length} conta(s) vencida(s) · Total: ${fmt(total(vencidos))}`,
+              icon:"https://bpo-casa77.netlify.app/favicon.ico"
+            });
+          }
+          if(hoje.length>0){
+            setTimeout(()=>{
+              new Notification("📅 BPO Casa 77 — Vence Hoje",{
+                body:`${hoje.length} conta(s) vencem hoje · Total: ${fmt(total(hoje))}`,
+                icon:"https://bpo-casa77.netlify.app/favicon.ico"
+              });
+            },2000);
+          }
+        }
+      });
+    }
+  },[currentUser]);
+
   // Auto-save com debounce
   const setData=useCallback(updater=>{
     setDataRaw(prev=>{
@@ -1071,7 +1347,7 @@ function App(){
 
   function renderPage(){
     if(page==="dashboard")return<Dashboard data={data} setPage={setPage}/>;
-    if(page==="rotina")return<RotinaDiaria data={data} setData={setData}/>;
+    if(page==="rotina")return<RotinaDiaria data={data} setData={setData} user={currentUser}/>;
     if(page==="pagar")return<ContasPagar data={data} setData={setData} user={currentUser}/>;
     if(page==="receber")return(
       <CadastroSimples titulo="Contas a Receber" icone="💰" lista={data.contasReceber||[]} user={currentUser}
