@@ -12,16 +12,55 @@ function genToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+// Marcador de "reset". Ao subir este valor, o próximo acesso após o deploy
+// zera TODO o aplicativo UMA única vez: apaga os dados financeiros, encerra
+// todas as sessões e recria a lista de usuários apenas com os acessos abaixo.
+// Como roda só quando o marcador muda, deploys seguintes não apagam mais nada,
+// preservando tudo o que for criado depois.
+const SEED_VERSION = "full-reset-2026-05-28b";
+
+function makeUser(id, username, name, role, password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return {
+    id, username, name, role, salt,
+    hash: hashPwd(password, salt),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function clearStore(name) {
+  try {
+    const store = getStore({ name, consistency: "strong" });
+    let cursor;
+    do {
+      const page = await store.list({ cursor });
+      for (const blob of page.blobs) await store.delete(blob.key);
+      cursor = page.cursor;
+    } while (cursor);
+  } catch { /* store vazio ou indisponível: nada a apagar */ }
+}
+
 async function ensureAdmin() {
   const store = getStore({ name: STORE_USERS, consistency: "strong" });
+  const seeded = await store.get("seedVersion", { type: "text" });
+
+  // Reset único de TODO o aplicativo: limpa dados financeiros e sessões e
+  // recria a base de usuários apenas com o master + o acesso do solicitante.
+  if (seeded !== SEED_VERSION) {
+    await clearStore(STORE_SESSIONS);
+    await clearStore(STORE_DATA);
+    await store.setJSON("users", [
+      makeUser("1", "master", "Master", "admin", "master@casa77"),
+      makeUser("2", "casa77", "Casa 77", "admin", "casa77@2026"),
+    ]);
+    await store.set("seedVersion", SEED_VERSION);
+    return;
+  }
+
+  // Fluxo normal: garante ao menos um admin caso a base esteja vazia.
   const users = await store.get("users", { type: "json" });
   if (!users || users.length === 0) {
-    const salt = crypto.randomBytes(16).toString("hex");
-    await store.setJSON("users", [{
-      id: "1", username: "admin", name: "Administrador",
-      role: "admin", salt, hash: hashPwd("casa77@admin", salt),
-      createdAt: new Date().toISOString(),
-    }]);
+    await store.setJSON("users", [makeUser("1", "master", "Master", "admin", "master@casa77")]);
   }
 }
 
@@ -56,7 +95,10 @@ export default async (request) => {
       const { username, password } = await request.json();
       const store = getStore({ name: STORE_USERS, consistency: "strong" });
       const users = await store.get("users", { type: "json" }) || [];
-      const user  = users.find(u => u.username === username);
+      // Comparação tolerante: ignora espaços e diferenças de maiúsculas/minúsculas,
+      // inclusive para usuários já cadastrados com nomes em formato diferente.
+      const login = String(username || "").trim().toLowerCase();
+      const user  = users.find(u => String(u.username || "").trim().toLowerCase() === login);
       if (!user || hashPwd(password, user.salt) !== user.hash) {
         return json({ error: "Usuário ou senha incorretos." }, 401);
       }
@@ -77,7 +119,7 @@ export default async (request) => {
     // ── ME ─────────────────────────────────────────────────────────────────
     if (path === "auth/me" && method === "GET") {
       if (!session) return json({ error: "Não autenticado." }, 401);
-      return json({ user: { userId: session.userId, username: session.username, name: session.name, role: session.role } });
+      return json({ user: { id: session.userId, userId: session.userId, username: session.username, name: session.name, role: session.role } });
     }
 
     // ── LOGOUT ─────────────────────────────────────────────────────────────
@@ -128,9 +170,11 @@ export default async (request) => {
       if (path === "users" && method === "POST") {
         const body  = await request.json();
         const users = await store.get("users", { type: "json" }) || [];
-        if (users.find(u => u.username === body.username)) return json({ error: "Login já em uso." }, 400);
+        const username = String(body.username || "").trim().toLowerCase().replace(/\s/g, "");
+        if (!username) return json({ error: "Informe o login." }, 400);
+        if (users.find(u => String(u.username || "").trim().toLowerCase() === username)) return json({ error: "Login já em uso." }, 400);
         const salt  = crypto.randomBytes(16).toString("hex");
-        const newU  = { id: Date.now().toString(), username: body.username, name: body.name, role: body.role || "assistente", salt, hash: hashPwd(body.password, salt), createdAt: new Date().toISOString() };
+        const newU  = { id: Date.now().toString(), username, name: body.name, role: body.role || "assistente", salt, hash: hashPwd(body.password, salt), createdAt: new Date().toISOString() };
         users.push(newU);
         await store.setJSON("users", users);
         return json({ id: newU.id, username: newU.username, name: newU.name, role: newU.role, createdAt: newU.createdAt });
@@ -146,7 +190,8 @@ export default async (request) => {
 
         // Verificar se novo username já existe em outro usuário
         if (body.username && body.username !== users[idx].username) {
-          const jaExiste = users.some(u => u.username === body.username && u.id !== userId);
+          const novo = String(body.username).trim().toLowerCase().replace(/\s/g, "");
+          const jaExiste = users.some(u => String(u.username || "").trim().toLowerCase() === novo && u.id !== userId);
           if (jaExiste) return json({ error: "Este login já está em uso por outro usuário." }, 400);
         }
 

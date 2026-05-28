@@ -42,7 +42,7 @@ const API = {
       headers: { "Content-Type":"application/json", ...(token?{"Authorization":`Bearer ${token}`}:{}), ...(opts.headers||{}) },
     });
     const data = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(data.error || "Erro na requisição");
+    if (!res.ok) { const err = new Error(data.error || "Erro na requisição"); err.status = res.status; throw err; }
     return data;
   },
   login:(u,p)=>API.call("auth/login",{method:"POST",body:JSON.stringify({username:u,password:p})}),
@@ -237,24 +237,35 @@ function Modal({open,onClose,title,children,wide}){
     </div>
   );
 }
-function Table({cols,rows,actions,emptyMsg}){
+function Table({cols,rows,actions,emptyMsg,selectable,selectedIds,onToggleRow,onToggleAll}){
   if(!rows?.length)return<div style={{textAlign:"center",padding:40,color:C.muted,fontSize:14}}>{emptyMsg||"Nenhum registro."}</div>;
+  const sel=selectedIds||new Set();
+  const allSel=selectable&&rows.length>0&&rows.every(r=>sel.has(r.id));
   return(
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
         <thead>
           <tr style={{background:C.bg}}>
+            {selectable&&<th style={{padding:"10px 12px",width:36,borderBottom:`2px solid ${C.border}`}}>
+              <input type="checkbox" checked={allSel} onChange={()=>onToggleAll&&onToggleAll()} style={{cursor:"pointer",width:16,height:16}}/>
+            </th>}
             {cols.map(c=><th key={c.key} style={{textAlign:"left",padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap"}}>{c.label}</th>)}
             {actions&&<th style={{padding:"10px 12px",color:C.muted,fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.border}`}}>Ações</th>}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row,i)=>(
-            <tr key={row.id??i} style={{borderBottom:`1px solid ${C.border}`,background:i%2?"#FAFBFC":C.surface}}>
+          {rows.map((row,i)=>{
+            const checked=selectable&&sel.has(row.id);
+            return(
+            <tr key={row.id??i} style={{borderBottom:`1px solid ${C.border}`,background:checked?C.blueLight:(i%2?"#FAFBFC":C.surface)}}>
+              {selectable&&<td style={{padding:"9px 12px",width:36}}>
+                <input type="checkbox" checked={!!checked} onChange={()=>onToggleRow&&onToggleRow(row.id)} style={{cursor:"pointer",width:16,height:16}}/>
+              </td>}
               {cols.map(c=><td key={c.key} style={{padding:"9px 12px",color:C.text}}>{c.render?c.render(row):row[c.key]??"—"}</td>)}
               {actions&&<td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>{actions(row)}</td>}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -272,7 +283,8 @@ function LoginScreen({onLogin}){
     if(!username||!password){setError("Preencha todos os campos.");return;}
     setLoading(true);setError("");
     try{
-      const res=await API.login(username,password);
+      const res=await API.login(username.trim(),password);
+      if(!res||!res.token){setError("Não foi possível entrar. Tente novamente.");setLoading(false);return;}
       localStorage.setItem("bpo_token",res.token);
       onLogin(res.user);
     }catch(e){setError(e.message||"Credenciais inválidas.");}
@@ -367,7 +379,7 @@ function GestaoUsuarios({currentUser}){
           actions={r=>(
             <div style={{display:"flex",gap:6}}>
               <Btn small variant="ghost" onClick={()=>openEdit(r)}>✏️ Editar</Btn>
-              {r.id!==currentUser.userId&&<Btn small variant="danger" onClick={()=>del(r)}>🗑️</Btn>}
+              {r.id!==currentUser.id&&r.id!==currentUser.userId&&<Btn small variant="danger" onClick={()=>del(r)}>🗑️</Btn>}
             </div>
           )}
         />
@@ -607,6 +619,7 @@ function ContasPagar({data,setData,user}){
   const [baixaItem,setBaixaItem]=useState(null);
   const [filtro,setFiltro]=useState({status:"",unidade:"",categoria:"",ano:"",busca:""});
   const [importPreview,setImportPreview]=useState(null);
+  const [selected,setSelected]=useState(()=>new Set());
   const fileRef=useRef();
   const cp=data.contasPagar||[];
   const filtered=cp.filter(c=>{
@@ -631,6 +644,21 @@ function ContasPagar({data,setData,user}){
   function handleBaixa(form){
     setData(d=>({...d,contasPagar:d.contasPagar.map(c=>c.id===baixaItem.id?{...c,status:"Pago",dataPagamento:form.data,valorPago:form.valor,formaPagamento:form.forma,comprovante:form.comprovante,obsBaixa:form.obs}:c)}));
     setBaixaItem(null);
+  }
+  function toggleRow(id){setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function bulkBaixa(){
+    const baixaveis=cp.filter(c=>selected.has(c.id)&&c.status!=="Pago"&&c.status!=="Cancelado");
+    if(baixaveis.length===0){alert("Nenhuma conta selecionada pode receber baixa (já estão pagas/canceladas).");return;}
+    if(!confirm(`Dar baixa em ${baixaveis.length} conta(s) com a data de hoje?`))return;
+    const ids=new Set(baixaveis.map(c=>c.id));
+    setData(d=>({...d,contasPagar:d.contasPagar.map(c=>ids.has(c.id)?{...c,status:"Pago",dataPagamento:today(),valorPago:String(parseBR(c.valor))}:c)}));
+    setSelected(new Set());
+  }
+  function bulkDelete(){
+    if(selected.size===0)return;
+    if(!confirm(`Excluir ${selected.size} conta(s) selecionada(s)? Esta ação não pode ser desfeita.`))return;
+    setData(d=>({...d,contasPagar:d.contasPagar.filter(c=>!selected.has(c.id))}));
+    setSelected(new Set());
   }
   function handleFile(e){
     const file=e.target.files?.[0];if(!file)return;
@@ -661,6 +689,9 @@ function ContasPagar({data,setData,user}){
     alert(`✅ Importação concluída!\n📋 ${novas.length} novas · ${importPreview.atualizadas.length} atualizadas\n💈 ${novasCom.length} comissões`);
   }
   const anos=[...new Set(cp.map(c=>(c.vencimento||"").substring(0,4)).filter(Boolean))].sort();
+  const visibleRows=filtered.slice(0,200);
+  const allSelected=visibleRows.length>0&&visibleRows.every(r=>selected.has(r.id));
+  function toggleAll(){setSelected(allSelected?new Set():new Set(visibleRows.map(r=>r.id)));}
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
@@ -686,8 +717,21 @@ function ContasPagar({data,setData,user}){
         <Select value={filtro.ano} onChange={v=>setFiltro(f=>({...f,ano:v}))} options={anos.map(a=>({value:a,label:a}))} style={{minWidth:90}}/>
         <Btn small variant="ghost" onClick={()=>setFiltro({status:"",unidade:"",categoria:"",ano:"",busca:""})}>Limpar</Btn>
       </div>
+      {selected.size>0&&(
+        <div style={{background:C.navy,borderRadius:12,padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{color:"#fff",fontWeight:700,fontSize:14}}>✔️ {selected.size} selecionada(s)</span>
+          <div style={{flex:1}}/>
+          <Btn small variant="success" onClick={bulkBaixa}>✅ Dar baixa nas selecionadas</Btn>
+          {canDelete&&<Btn small variant="danger" onClick={bulkDelete}>🗑️ Excluir selecionadas</Btn>}
+          <Btn small variant="ghost" style={{color:"#fff",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>setSelected(new Set())}>Limpar seleção</Btn>
+        </div>
+      )}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
         <Table
+          selectable
+          selectedIds={selected}
+          onToggleRow={toggleRow}
+          onToggleAll={toggleAll}
           cols={[
             {key:"fornecedor",label:"Fornecedor",render:r=><div><div style={{fontWeight:700}}>{r.fornecedor||r.descricao}</div>{r.contrato&&<div style={{fontSize:11,color:C.muted}}>Contrato: {r.contrato}</div>}</div>},
             {key:"unidade",label:"Unidade"},
@@ -697,7 +741,7 @@ function ContasPagar({data,setData,user}){
             {key:"valor",label:"Valor",render:r=><strong>{fmt(parseBR(r.valor))}</strong>},
             {key:"status",label:"Status",render:r=><StatusBadge status={r.status}/>},
           ]}
-          rows={filtered.slice(0,200)}
+          rows={visibleRows}
           actions={r=>(
             <div style={{display:"flex",gap:5}}>
               {r.status!=="Pago"&&r.status!=="Cancelado"&&<Btn small variant="success" onClick={()=>setBaixaItem(r)}>✅</Btn>}
@@ -755,9 +799,16 @@ function ContasPagar({data,setData,user}){
 function FormContaPagar({item,data,onClose,onSave}){
   const [form,setForm]=useState(item||{fornecedor:"",unidade:"",categoria:"",tipoCusto:"Fixo",descricao:"",contrato:"",vencimento:"",valor:"",formaPagamento:"PIX",status:"Em aberto",observacao:""});
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const fornecedoresList=(data.fornecedores||[]).map(f=>f.nome).filter(Boolean);
   return(
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-      <Input label="Fornecedor" required value={form.fornecedor} onChange={v=>set("fornecedor",v)}/>
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        <label style={{fontSize:12,fontWeight:600,color:C.muted}}>Fornecedor *</label>
+        <input list="forn-list" value={form.fornecedor||""} onChange={e=>set("fornecedor",e.target.value)} placeholder="Selecione ou digite"
+          style={{border:`1.5px solid ${C.border}`,borderRadius:8,padding:"8px 12px",fontSize:14,outline:"none",background:C.surface,color:C.text}}/>
+        <datalist id="forn-list">{fornecedoresList.map((n,i)=><option key={i} value={n}/>)}</datalist>
+        {fornecedoresList.length>0&&<span style={{fontSize:11,color:C.muted}}>Puxando de {fornecedoresList.length} fornecedor(es) cadastrado(s).</span>}
+      </div>
       <Input label="Contrato" value={form.contrato} onChange={v=>set("contrato",v)}/>
       <Select label="Unidade" required value={form.unidade} onChange={v=>set("unidade",v)} options={(data.unidades||[]).map(u=>({value:u.nome,label:u.nome}))}/>
       <Select label="Categoria" value={form.categoria} onChange={v=>set("categoria",v)} options={data.categorias||[]}/>
@@ -999,51 +1050,77 @@ function App(){
   const [sideOpen,setSideOpen]=useState(true);
   const [loading,setLoading]=useState(true);
   const [saveStatus,setSaveStatus]=useState(""); // "" | "saving" | "saved" | "error"
+  const [loadError,setLoadError]=useState("");    // falha ao carregar dados (não desloga)
   const saveTimer=useRef(null);
+  const lastPayload=useRef(null);
 
-  // Verificar sessão ao iniciar
-  useEffect(()=>{
+  // Verificar sessão ao iniciar.
+  // IMPORTANTE: uma falha ao CARREGAR OS DADOS não pode deslogar o usuário.
+  // Só uma sessão inválida (401) limpa o token e volta para o login.
+  const bootstrap=useCallback(async()=>{
     const token=localStorage.getItem("bpo_token");
     if(!token){setLoading(false);return;}
-    API.me().then(res=>{
+    setLoading(true);setLoadError("");
+    try{
+      const res=await API.me();
       setCurrentUser(res.user);
-      return API.getData();
-    }).then(d=>{
+    }catch(e){
+      if(e.status===401){
+        localStorage.removeItem("bpo_token");
+        setCurrentUser(null);
+      }else{
+        // Erro de rede / servidor: mantém a sessão e permite tentar de novo.
+        setLoadError(e.message||"Não foi possível conectar ao servidor.");
+      }
+      setLoading(false);
+      return;
+    }
+    try{
+      const d=await API.getData();
       if(d&&Object.keys(d).length>0)setDataRaw({...DEFAULT_DATA,...d});
-      setLoading(false);
-    }).catch(()=>{
-      localStorage.removeItem("bpo_token");
-      setLoading(false);
-    });
+    }catch(e){
+      // Falha ao carregar dados: continua logado, mostra aviso com opção de tentar de novo.
+      setLoadError(e.message||"Falha ao carregar os dados. Tente novamente.");
+    }
+    setLoading(false);
   },[]);
+  useEffect(()=>{bootstrap();},[bootstrap]);
 
   // Auto-save com debounce
   const setData=useCallback(updater=>{
     setDataRaw(prev=>{
       const next=typeof updater==="function"?updater(prev):updater;
+      lastPayload.current=next;
       clearTimeout(saveTimer.current);
       setSaveStatus("saving");
       saveTimer.current=setTimeout(async()=>{
         try{
           await API.saveData(next);
           setSaveStatus("saved");
-          setTimeout(()=>setSaveStatus(""),2000);
+          setTimeout(()=>setSaveStatus(s=>s==="saved"?"":s),2000);
         }catch(e){
-          setSaveStatus("error");
-          setTimeout(()=>setSaveStatus(""),3000);
+          setSaveStatus("error"); // erro fica visível até nova tentativa
         }
-      },1500);
+      },1200);
       return next;
     });
   },[]);
 
+  function retrySave(){
+    if(!lastPayload.current)return;
+    setSaveStatus("saving");
+    API.saveData(lastPayload.current)
+      .then(()=>{setSaveStatus("saved");setTimeout(()=>setSaveStatus(s=>s==="saved"?"":s),2000);})
+      .catch(()=>setSaveStatus("error"));
+  }
+
   function handleLogin(user){
     setCurrentUser(user);
-    setLoading(true);
+    setLoading(true);setLoadError("");
     API.getData().then(d=>{
       if(d&&Object.keys(d).length>0)setDataRaw({...DEFAULT_DATA,...d});
       setLoading(false);
-    }).catch(()=>setLoading(false));
+    }).catch(e=>{setLoadError(e.message||"Falha ao carregar os dados. Tente novamente.");setLoading(false);});
   }
 
   async function handleLogout(){
@@ -1063,7 +1140,22 @@ function App(){
     );
   }
 
-  if(!currentUser)return<LoginScreen onLogin={handleLogin}/>;
+  if(!currentUser){
+    if(loadError&&localStorage.getItem("bpo_token")){
+      return(
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.navy,flexDirection:"column",gap:18,padding:24}}>
+          <div style={{width:56,height:56,background:C.red,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⚠️</div>
+          <div style={{color:"#fff",fontSize:16,fontWeight:700,textAlign:"center"}}>Não foi possível conectar</div>
+          <div style={{color:"rgba(255,255,255,.7)",fontSize:13,maxWidth:380,textAlign:"center"}}>{loadError}</div>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="primary" onClick={bootstrap}>Tentar novamente</Btn>
+            <Btn variant="ghost" style={{color:"#fff",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>{localStorage.removeItem("bpo_token");setLoadError("");}}>Sair</Btn>
+          </div>
+        </div>
+      );
+    }
+    return<LoginScreen onLogin={handleLogin}/>;
+  }
 
   const cp=data.contasPagar||[];
   const alertCount=cp.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado"&&(isHoje(c.vencimento)||isVencido(c.vencimento))).length;
@@ -1158,11 +1250,18 @@ function App(){
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
             {saveStatus==="saving"&&<div style={{background:"#FEF7E4",color:C.yellow,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>💾 Salvando...</div>}
             {saveStatus==="saved"&&<div style={{background:C.greenLight,color:C.green,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>✅ Salvo</div>}
-            {saveStatus==="error"&&<div style={{background:C.redLight,color:C.red,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>❌ Erro ao salvar</div>}
+            {saveStatus==="error"&&<button onClick={retrySave} title="Toque para salvar novamente" style={{background:C.redLight,color:C.red,border:`1px solid ${C.red}`,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>❌ Erro ao salvar — repetir</button>}
             {alertCount>0&&<button onClick={()=>setPage("rotina")} style={{background:C.redLight,border:`1px solid ${C.red}`,borderRadius:8,padding:"5px 14px",fontSize:13,fontWeight:700,color:C.red,cursor:"pointer"}}>⚠️ {alertCount} vencimento(s)</button>}
             <div style={{background:C.blueLight,color:C.blue,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>{new Date().toLocaleDateString("pt-BR")}</div>
           </div>
         </div>
+        {loadError&&(
+          <div style={{background:C.redLight,borderBottom:`1px solid ${C.red}`,padding:"10px 24px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <span style={{color:C.red,fontWeight:700,fontSize:13}}>⚠️ {loadError}</span>
+            <Btn small variant="danger" onClick={bootstrap}>Recarregar dados</Btn>
+            <Btn small variant="ghost" onClick={()=>setLoadError("")}>Dispensar</Btn>
+          </div>
+        )}
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           {renderPage()}
         </div>
@@ -1171,8 +1270,30 @@ function App(){
   );
 }
 
+// ── ERROR BOUNDARY ──────────────────────────────────────────────────────────
+// Evita a "tela em branco / deu erro": qualquer exceção de renderização passa a
+// exibir uma mensagem legível com o erro e um botão para recarregar.
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  componentDidCatch(err,info){console.error("Erro na aplicação:",err,info);}
+  render(){
+    if(this.state.err){
+      return(
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.navy,flexDirection:"column",gap:16,padding:24}}>
+          <div style={{width:56,height:56,background:C.red,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⚠️</div>
+          <div style={{color:"#fff",fontSize:16,fontWeight:700}}>Ocorreu um erro inesperado</div>
+          <div style={{color:"rgba(255,255,255,.7)",fontSize:13,maxWidth:420,textAlign:"center",fontFamily:"monospace"}}>{String(this.state.err?.message||this.state.err)}</div>
+          <button onClick={()=>window.location.reload()} style={{background:C.orange,color:"#fff",border:"none",borderRadius:8,fontWeight:700,padding:"10px 20px",fontSize:14,cursor:"pointer"}}>Recarregar a página</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const root=ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
+root.render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 </body>
 </html>

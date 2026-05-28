@@ -1,0 +1,16 @@
+# Os arquivos do site ficam na subpasta "bpo-casa77".
+# Sem esta configuração no raiz do repositório, o Netlify publica a raiz
+# (que não tem index.html) e o link do site abre em "Page not found".
+[build]
+  publish = "bpo-casa77"
+  functions = "bpo-casa77/netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
