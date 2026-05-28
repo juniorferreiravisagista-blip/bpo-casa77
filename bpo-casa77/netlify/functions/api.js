@@ -13,10 +13,11 @@ function genToken() {
 }
 
 // Marcador de "reset". Ao subir este valor, o próximo acesso após o deploy
-// zera a lista de usuários UMA única vez e recria apenas os acessos abaixo.
-// Como roda só quando o marcador muda, deploys seguintes não apagam os
-// usuários que vierem a ser criados depois.
-const SEED_VERSION = "reset-2026-05-28";
+// zera TODO o aplicativo UMA única vez: apaga os dados financeiros, encerra
+// todas as sessões e recria a lista de usuários apenas com os acessos abaixo.
+// Como roda só quando o marcador muda, deploys seguintes não apagam mais nada,
+// preservando tudo o que for criado depois.
+const SEED_VERSION = "full-reset-2026-05-28";
 
 function makeUser(id, username, name, role, password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -27,12 +28,27 @@ function makeUser(id, username, name, role, password) {
   };
 }
 
+async function clearStore(name) {
+  try {
+    const store = getStore({ name, consistency: "strong" });
+    let cursor;
+    do {
+      const page = await store.list({ cursor });
+      for (const blob of page.blobs) await store.delete(blob.key);
+      cursor = page.cursor;
+    } while (cursor);
+  } catch { /* store vazio ou indisponível: nada a apagar */ }
+}
+
 async function ensureAdmin() {
   const store = getStore({ name: STORE_USERS, consistency: "strong" });
   const seeded = await store.get("seedVersion", { type: "text" });
 
-  // Reset único: zera todos os usuários e deixa apenas o master + o novo acesso.
+  // Reset único de TODO o aplicativo: limpa dados financeiros e sessões e
+  // recria a base de usuários apenas com o master + o acesso do solicitante.
   if (seeded !== SEED_VERSION) {
+    await clearStore(STORE_SESSIONS);
+    await clearStore(STORE_DATA);
     await store.setJSON("users", [
       makeUser("1", "master", "Master", "admin", "master@casa77"),
       makeUser("2", "casa77", "Casa 77", "admin", "casa77@2026"),
