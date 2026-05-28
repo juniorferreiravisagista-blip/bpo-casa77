@@ -376,7 +376,18 @@ function GestaoUsuarios({currentUser}){
       <Modal open={modal} title={editUser?"✏️ Editar Usuário":"➕ Novo Usuário"} onClose={()=>setModal(false)}>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <Input label="Nome completo" required value={form.name} onChange={v=>setForm(f=>({...f,name:v}))}/>
-          {!editUser&&<Input label="Login (sem espaços)" required value={form.username} onChange={v=>setForm(f=>({...f,username:v.toLowerCase().replace(/\s/g,"")}))}/>}
+          <div>
+            <Input
+              label={editUser?"Login (nome de usuário)":"Login (sem espaços)"}
+              required={!editUser}
+              value={form.username}
+              onChange={v=>setForm(f=>({...f,username:v.toLowerCase().replace(/\s/g,"")}))}
+              placeholder="ex: joao.silva"
+            />
+            {editUser&&<div style={{fontSize:11,color:C.muted,marginTop:4,paddingLeft:2}}>
+              ⚠️ Ao alterar o login, o usuário precisará usar o novo nome para entrar.
+            </div>}
+          </div>
           <Select label="Perfil de Acesso" value={form.role} onChange={v=>setForm(f=>({...f,role:v}))} options={[{value:"admin",label:"Admin — Acesso total"},{value:"gerente",label:"Gerente — Financeiro completo"},{value:"assistente",label:"Assistente — Visualização e baixa"}]}/>
           <Input label={editUser?"Nova Senha (deixe vazio p/ manter)":"Senha"} type="password" value={form.password} onChange={v=>setForm(f=>({...f,password:v}))} required={!editUser}/>
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
