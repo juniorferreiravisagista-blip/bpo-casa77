@@ -77,7 +77,7 @@ export default async (request) => {
     // ── ME ─────────────────────────────────────────────────────────────────
     if (path === "auth/me" && method === "GET") {
       if (!session) return json({ error: "Não autenticado." }, 401);
-      return json({ user: { userId: session.userId, username: session.username, name: session.name, role: session.role } });
+      return json({ user: { id: session.userId, userId: session.userId, username: session.username, name: session.name, role: session.role } });
     }
 
     // ── LOGOUT ─────────────────────────────────────────────────────────────

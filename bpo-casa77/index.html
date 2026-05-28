@@ -42,7 +42,7 @@ const API = {
       headers: { "Content-Type":"application/json", ...(token?{"Authorization":`Bearer ${token}`}:{}), ...(opts.headers||{}) },
     });
     const data = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(data.error || "Erro na requisição");
+    if (!res.ok) { const err = new Error(data.error || "Erro na requisição"); err.status = res.status; throw err; }
     return data;
   },
   login:(u,p)=>API.call("auth/login",{method:"POST",body:JSON.stringify({username:u,password:p})}),
@@ -378,7 +378,7 @@ function GestaoUsuarios({currentUser}){
           actions={r=>(
             <div style={{display:"flex",gap:6}}>
               <Btn small variant="ghost" onClick={()=>openEdit(r)}>✏️ Editar</Btn>
-              {r.id!==currentUser.userId&&<Btn small variant="danger" onClick={()=>del(r)}>🗑️</Btn>}
+              {r.id!==currentUser.id&&r.id!==currentUser.userId&&<Btn small variant="danger" onClick={()=>del(r)}>🗑️</Btn>}
             </div>
           )}
         />
@@ -1049,51 +1049,77 @@ function App(){
   const [sideOpen,setSideOpen]=useState(true);
   const [loading,setLoading]=useState(true);
   const [saveStatus,setSaveStatus]=useState(""); // "" | "saving" | "saved" | "error"
+  const [loadError,setLoadError]=useState("");    // falha ao carregar dados (não desloga)
   const saveTimer=useRef(null);
+  const lastPayload=useRef(null);
 
-  // Verificar sessão ao iniciar
-  useEffect(()=>{
+  // Verificar sessão ao iniciar.
+  // IMPORTANTE: uma falha ao CARREGAR OS DADOS não pode deslogar o usuário.
+  // Só uma sessão inválida (401) limpa o token e volta para o login.
+  const bootstrap=useCallback(async()=>{
     const token=localStorage.getItem("bpo_token");
     if(!token){setLoading(false);return;}
-    API.me().then(res=>{
+    setLoading(true);setLoadError("");
+    try{
+      const res=await API.me();
       setCurrentUser(res.user);
-      return API.getData();
-    }).then(d=>{
+    }catch(e){
+      if(e.status===401){
+        localStorage.removeItem("bpo_token");
+        setCurrentUser(null);
+      }else{
+        // Erro de rede / servidor: mantém a sessão e permite tentar de novo.
+        setLoadError(e.message||"Não foi possível conectar ao servidor.");
+      }
+      setLoading(false);
+      return;
+    }
+    try{
+      const d=await API.getData();
       if(d&&Object.keys(d).length>0)setDataRaw({...DEFAULT_DATA,...d});
-      setLoading(false);
-    }).catch(()=>{
-      localStorage.removeItem("bpo_token");
-      setLoading(false);
-    });
+    }catch(e){
+      // Falha ao carregar dados: continua logado, mostra aviso com opção de tentar de novo.
+      setLoadError(e.message||"Falha ao carregar os dados. Tente novamente.");
+    }
+    setLoading(false);
   },[]);
+  useEffect(()=>{bootstrap();},[bootstrap]);
 
   // Auto-save com debounce
   const setData=useCallback(updater=>{
     setDataRaw(prev=>{
       const next=typeof updater==="function"?updater(prev):updater;
+      lastPayload.current=next;
       clearTimeout(saveTimer.current);
       setSaveStatus("saving");
       saveTimer.current=setTimeout(async()=>{
         try{
           await API.saveData(next);
           setSaveStatus("saved");
-          setTimeout(()=>setSaveStatus(""),2000);
+          setTimeout(()=>setSaveStatus(s=>s==="saved"?"":s),2000);
         }catch(e){
-          setSaveStatus("error");
-          setTimeout(()=>setSaveStatus(""),3000);
+          setSaveStatus("error"); // erro fica visível até nova tentativa
         }
-      },1500);
+      },1200);
       return next;
     });
   },[]);
 
+  function retrySave(){
+    if(!lastPayload.current)return;
+    setSaveStatus("saving");
+    API.saveData(lastPayload.current)
+      .then(()=>{setSaveStatus("saved");setTimeout(()=>setSaveStatus(s=>s==="saved"?"":s),2000);})
+      .catch(()=>setSaveStatus("error"));
+  }
+
   function handleLogin(user){
     setCurrentUser(user);
-    setLoading(true);
+    setLoading(true);setLoadError("");
     API.getData().then(d=>{
       if(d&&Object.keys(d).length>0)setDataRaw({...DEFAULT_DATA,...d});
       setLoading(false);
-    }).catch(()=>setLoading(false));
+    }).catch(e=>{setLoadError(e.message||"Falha ao carregar os dados. Tente novamente.");setLoading(false);});
   }
 
   async function handleLogout(){
@@ -1113,7 +1139,22 @@ function App(){
     );
   }
 
-  if(!currentUser)return<LoginScreen onLogin={handleLogin}/>;
+  if(!currentUser){
+    if(loadError&&localStorage.getItem("bpo_token")){
+      return(
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.navy,flexDirection:"column",gap:18,padding:24}}>
+          <div style={{width:56,height:56,background:C.red,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⚠️</div>
+          <div style={{color:"#fff",fontSize:16,fontWeight:700,textAlign:"center"}}>Não foi possível conectar</div>
+          <div style={{color:"rgba(255,255,255,.7)",fontSize:13,maxWidth:380,textAlign:"center"}}>{loadError}</div>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="primary" onClick={bootstrap}>Tentar novamente</Btn>
+            <Btn variant="ghost" style={{color:"#fff",borderColor:"rgba(255,255,255,.4)"}} onClick={()=>{localStorage.removeItem("bpo_token");setLoadError("");}}>Sair</Btn>
+          </div>
+        </div>
+      );
+    }
+    return<LoginScreen onLogin={handleLogin}/>;
+  }
 
   const cp=data.contasPagar||[];
   const alertCount=cp.filter(c=>c.status!=="Pago"&&c.status!=="Cancelado"&&(isHoje(c.vencimento)||isVencido(c.vencimento))).length;
@@ -1208,11 +1249,18 @@ function App(){
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
             {saveStatus==="saving"&&<div style={{background:"#FEF7E4",color:C.yellow,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>💾 Salvando...</div>}
             {saveStatus==="saved"&&<div style={{background:C.greenLight,color:C.green,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>✅ Salvo</div>}
-            {saveStatus==="error"&&<div style={{background:C.redLight,color:C.red,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>❌ Erro ao salvar</div>}
+            {saveStatus==="error"&&<button onClick={retrySave} title="Toque para salvar novamente" style={{background:C.redLight,color:C.red,border:`1px solid ${C.red}`,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>❌ Erro ao salvar — repetir</button>}
             {alertCount>0&&<button onClick={()=>setPage("rotina")} style={{background:C.redLight,border:`1px solid ${C.red}`,borderRadius:8,padding:"5px 14px",fontSize:13,fontWeight:700,color:C.red,cursor:"pointer"}}>⚠️ {alertCount} vencimento(s)</button>}
             <div style={{background:C.blueLight,color:C.blue,borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>{new Date().toLocaleDateString("pt-BR")}</div>
           </div>
         </div>
+        {loadError&&(
+          <div style={{background:C.redLight,borderBottom:`1px solid ${C.red}`,padding:"10px 24px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <span style={{color:C.red,fontWeight:700,fontSize:13}}>⚠️ {loadError}</span>
+            <Btn small variant="danger" onClick={bootstrap}>Recarregar dados</Btn>
+            <Btn small variant="ghost" onClick={()=>setLoadError("")}>Dispensar</Btn>
+          </div>
+        )}
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           {renderPage()}
         </div>
@@ -1221,8 +1269,30 @@ function App(){
   );
 }
 
+// ── ERROR BOUNDARY ──────────────────────────────────────────────────────────
+// Evita a "tela em branco / deu erro": qualquer exceção de renderização passa a
+// exibir uma mensagem legível com o erro e um botão para recarregar.
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  componentDidCatch(err,info){console.error("Erro na aplicação:",err,info);}
+  render(){
+    if(this.state.err){
+      return(
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.navy,flexDirection:"column",gap:16,padding:24}}>
+          <div style={{width:56,height:56,background:C.red,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⚠️</div>
+          <div style={{color:"#fff",fontSize:16,fontWeight:700}}>Ocorreu um erro inesperado</div>
+          <div style={{color:"rgba(255,255,255,.7)",fontSize:13,maxWidth:420,textAlign:"center",fontFamily:"monospace"}}>{String(this.state.err?.message||this.state.err)}</div>
+          <button onClick={()=>window.location.reload()} style={{background:C.orange,color:"#fff",border:"none",borderRadius:8,fontWeight:700,padding:"10px 20px",fontSize:14,cursor:"pointer"}}>Recarregar a página</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const root=ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
+root.render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 </body>
 </html>
