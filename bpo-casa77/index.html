@@ -283,7 +283,8 @@ function LoginScreen({onLogin}){
     if(!username||!password){setError("Preencha todos os campos.");return;}
     setLoading(true);setError("");
     try{
-      const res=await API.login(username,password);
+      const res=await API.login(username.trim(),password);
+      if(!res||!res.token){setError("Não foi possível entrar. Tente novamente.");setLoading(false);return;}
       localStorage.setItem("bpo_token",res.token);
       onLogin(res.user);
     }catch(e){setError(e.message||"Credenciais inválidas.");}

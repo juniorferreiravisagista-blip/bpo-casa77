@@ -56,7 +56,10 @@ export default async (request) => {
       const { username, password } = await request.json();
       const store = getStore({ name: STORE_USERS, consistency: "strong" });
       const users = await store.get("users", { type: "json" }) || [];
-      const user  = users.find(u => u.username === username);
+      // Comparação tolerante: ignora espaços e diferenças de maiúsculas/minúsculas,
+      // inclusive para usuários já cadastrados com nomes em formato diferente.
+      const login = String(username || "").trim().toLowerCase();
+      const user  = users.find(u => String(u.username || "").trim().toLowerCase() === login);
       if (!user || hashPwd(password, user.salt) !== user.hash) {
         return json({ error: "Usuário ou senha incorretos." }, 401);
       }
@@ -128,9 +131,11 @@ export default async (request) => {
       if (path === "users" && method === "POST") {
         const body  = await request.json();
         const users = await store.get("users", { type: "json" }) || [];
-        if (users.find(u => u.username === body.username)) return json({ error: "Login já em uso." }, 400);
+        const username = String(body.username || "").trim().toLowerCase().replace(/\s/g, "");
+        if (!username) return json({ error: "Informe o login." }, 400);
+        if (users.find(u => String(u.username || "").trim().toLowerCase() === username)) return json({ error: "Login já em uso." }, 400);
         const salt  = crypto.randomBytes(16).toString("hex");
-        const newU  = { id: Date.now().toString(), username: body.username, name: body.name, role: body.role || "assistente", salt, hash: hashPwd(body.password, salt), createdAt: new Date().toISOString() };
+        const newU  = { id: Date.now().toString(), username, name: body.name, role: body.role || "assistente", salt, hash: hashPwd(body.password, salt), createdAt: new Date().toISOString() };
         users.push(newU);
         await store.setJSON("users", users);
         return json({ id: newU.id, username: newU.username, name: newU.name, role: newU.role, createdAt: newU.createdAt });
@@ -146,7 +151,8 @@ export default async (request) => {
 
         // Verificar se novo username já existe em outro usuário
         if (body.username && body.username !== users[idx].username) {
-          const jaExiste = users.some(u => u.username === body.username && u.id !== userId);
+          const novo = String(body.username).trim().toLowerCase().replace(/\s/g, "");
+          const jaExiste = users.some(u => String(u.username || "").trim().toLowerCase() === novo && u.id !== userId);
           if (jaExiste) return json({ error: "Este login já está em uso por outro usuário." }, 400);
         }
 
