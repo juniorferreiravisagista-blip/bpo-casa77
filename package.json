@@ -1,0 +1,12 @@
+{
+  "name": "bpo-casa77",
+  "version": "2.0.0",
+  "private": true,
+  "dependencies": {
+    "@netlify/database": "^1.0.0",
+    "drizzle-orm": "beta"
+  },
+  "devDependencies": {
+    "drizzle-kit": "beta"
+  }
+}

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BPO Casa 77</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0052A5;--orange:#F47920;--gray:#F4F5F7;--navy:#0A1628;--green:#22C55E;--red:#EF4444;--white:#FFFFFF;--border:#E2E8F0;--text:#1E293B;--text2:#64748B;--radius:10px}
+body{font-family:'DM Sans',sans-serif;background:var(--gray);color:var(--text);min-height:100vh}
+.login-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy) 0%,#1a2d4a 100%)}
+.login-card{background:var(--white);border-radius:16px;padding:48px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-card h1{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:8px;text-align:center}
+.login-card .brand{color:var(--orange);font-size:28px;font-weight:700;text-align:center;margin-bottom:24px;display:block}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:border .2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--blue);color:var(--white)}
+.btn-primary:hover{background:#003d7a}
+.btn-orange{background:var(--orange);color:var(--white)}
+.btn-orange:hover{background:#d96a18}
+.btn-success{background:var(--green);color:var(--white)}
+.btn-danger{background:var(--red);color:var(--white)}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--gray)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-block{width:100%;justify-content:center}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:250px;background:var(--navy);color:var(--white);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s}
+.sidebar-brand{padding:20px 24px;font-size:20px;font-weight:700;color:var(--orange);border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.sidebar-item{display:flex;align-items:center;gap:12px;padding:12px 24px;color:rgba(255,255,255,.6);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.sidebar-item:hover{background:rgba(255,255,255,.05);color:var(--white)}
+.sidebar-item.active{background:rgba(255,255,255,.08);color:var(--white);border-left-color:var(--orange)}
+.sidebar-item .badge{background:var(--red);color:var(--white);font-size:10px;padding:2px 7px;border-radius:10px;margin-left:auto}
+.sidebar-user{padding:16px 24px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;display:flex;align-items:center;justify-content:space-between}
+.main{flex:1;margin-left:250px;padding:24px;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.header h2{font-size:22px;font-weight:700;color:var(--navy)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--white);border-radius:var(--radius);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.kpi-card .label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+.kpi-card .value{font-size:24px;font-weight:700;color:var(--navy)}
+.kpi-card .value.danger{color:var(--red)}
+.kpi-card .value.success{color:var(--green)}
+.kpi-card .value.warning{color:var(--orange)}
+.card{background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:20px}
+.card-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap}
+.tab{padding:10px 20px;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab .badge{background:var(--red);color:var(--white);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:2px solid var(--border);letter-spacing:.3px;white-space:nowrap}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:hover{background:var(--gray)}
+.status{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;display:inline-block;white-space:nowrap}
+.status-pago,.status-recebido,.status-ativo{background:#dcfce7;color:#166534}
+.status-aberto,.status-previsto,.status-pendente{background:#dbeafe;color:#1e40af}
+.status-vencido,.status-cancelado,.status-inativo{background:#fee2e2;color:#991b1b}
+.status-agendado{background:#fef3c7;color:#92400e}
+.status-renegociado{background:#f3e8ff;color:#6b21a8}
+.search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.search-input{position:relative;flex:1;min-width:200px}
+.search-input input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none}
+.search-input::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E") no-repeat center;background-size:contain}
+.filter-select{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--white);min-width:140px;outline:none}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal{background:var(--white);border-radius:16px;padding:32px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:20px}
+.modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:24px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state p{font-size:14px}
+.float-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--white);padding:14px 28px;border-radius:12px;display:flex;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:200;font-size:14px;font-weight:600}
+.checkbox{width:18px;height:18px;cursor:pointer;accent-color:var(--blue)}
+.alert-box{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:#991b1b;display:flex;align-items:center;gap:8px}
+.alert-box.warning{background:#fffbeb;border-color:#fed7aa;color:#92400e}
+.hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;background:var(--navy);color:var(--white);border:none;border-radius:8px;padding:8px 12px;font-size:20px;cursor:pointer}
+.actions-cell{display:flex;gap:4px;flex-wrap:wrap}
+@media(max-width:768px){
+.sidebar{transform:translateX(-100%)}
+.sidebar.open{transform:translateX(0)}
+.hamburger{display:block}
+.main{margin-left:0;padding:16px;padding-top:56px}
+.kpi-grid{grid-template-columns:1fr 1fr}
+.form-row{grid-template-columns:1fr}
+.search-bar{flex-direction:column}
+.search-bar>*{width:100%}
+table{font-size:12px}
+th,td{padding:8px 6px}
+.two-col{grid-template-columns:1fr!important}
+}
+@media print{.sidebar,.hamburger,.btn,.search-bar,.tabs,.float-bar{display:none!important}.main{margin:0;padding:20px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,createContext,useContext,useMemo}=React;
+
+const CATEGORIES=['Financiamentos','Renegociacoes financeiras','Aluguel','Agua','Contabilidade','Limpeza','Administrativo','Comunicacao','Marketing','Promocoes','Comissao','Cartao de credito','Impostos','Taxas','Manutencao','Sistema','Produtos para revenda','Insumos da barbearia'];
+const PAYMENT_METHODS=['PIX','Dinheiro','Cartao de credito','Cartao de debito','Boleto','Transferencia','Permuta','Voucher','Outro'];
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase();
+const MONTHS_FULL={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+function mapCategory(raw){const n=norm(raw);if(!n)return'Administrativo';
+  if(n.includes('emprestimo')||n.includes('financiament'))return'Financiamentos';
+  if(n.includes('renegocia'))return'Renegociacoes financeiras';
+  if(n.includes('aluguel'))return'Aluguel';if(n.includes('agua'))return'Agua';
+  if(n.includes('contabil'))return'Contabilidade';if(n.includes('limpeza'))return'Limpeza';
+  if(n.includes('administrativ'))return'Administrativo';if(n.includes('comunica'))return'Comunicacao';
+  if(n.includes('marketing')||n.includes('promo'))return'Marketing';if(n.includes('comiss'))return'Comissao';
+  if(n.includes('cartao'))return'Cartao de credito';if(n.includes('imposto'))return'Impostos';
+  if(n.includes('taxa'))return'Taxas';if(n.includes('manuten'))return'Manutencao';
+  if(n.includes('sistema'))return'Sistema';if(n.includes('revenda')||n.includes('produto'))return'Produtos para revenda';
+  if(n.includes('insumo'))return'Insumos da barbearia';return raw;}
+const PAY_STATUSES=['Em aberto','Pago','Vencido','Agendado','Renegociado','Cancelado'];
+const REC_TYPES=['Assinatura','PIX','Dinheiro','Cartao','Permuta'];
+const ASSET_CATS=['Moveis e utensilios','Equipamentos','Computadores','Veiculos','Ferramentas','Instalacoes','Outros'];
+const DEPRECIATION={'Moveis e utensilios':0.10,'Equipamentos':0.10,'Ferramentas':0.10,'Computadores':0.20,'Veiculos':0.20,'Instalacoes':0.04,'Outros':0.10};
+
+const AuthCtx=createContext(null);
+
+function fmt(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function fmtDate(d){if(!d)return'-';const p=String(d).split('T')[0].split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d}
+function todayStr(){return new Date().toISOString().split('T')[0]}
+function monthStart(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`}
+function monthEnd(){const d=new Date(new Date().getFullYear(),new Date().getMonth()+1,0);return d.toISOString().split('T')[0]}
+
+function api(path,opts={}){
+  const token=localStorage.getItem('bpo_token');
+  const headers={'Content-Type':'application/json',...(opts.headers||{})};
+  if(token)headers['Authorization']=`Bearer ${token}`;
+  return fetch(`/api${path}`,{...opts,headers}).then(async r=>{
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error||'Erro no servidor');
+    return data;
+  });
+}
+
+function StatusBadge({status}){
+  const s=(status||'').toLowerCase();
+  let cls='status-aberto';
+  if(s.includes('pago')||s.includes('recebido')||s==='ativo'||s==='admin')cls='status-pago';
+  else if(s.includes('vencido')||s.includes('cancelado')||s==='inativo')cls='status-vencido';
+  else if(s.includes('agendado'))cls='status-agendado';
+  else if(s.includes('renegociado'))cls='status-renegociado';
+  else if(s.includes('pendente')||s.includes('previsto'))cls='status-pendente';
+  return <span className={`status ${cls}`}>{status}</span>;
+}
+
+function Modal({show,onClose,title,children}){
+  if(!show)return null;
+  return <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+    <div className="modal"><h3>{title}</h3>{children}</div>
+  </div>;
+}
+
+function gcalUrl(title,date,desc){
+  const d=(date||'').replace(/-/g,'');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${d}/${d}&details=${encodeURIComponent(desc||'')}`;
+}
+function wppUrl(phone,msg){
+  const p=(phone||'').replace(/\D/g,'');
+  return `https://wa.me/55${p}?text=${encodeURIComponent(msg)}`;
+}
+
+/* ==================== LOGIN ==================== */
+function Login(){
+  const {login:doLogin}=useContext(AuthCtx);
+  const [login,setLogin]=useState('');
+  const [pw,setPw]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  const go=async e=>{
+    e.preventDefault();setErr('');setLoading(true);
+    try{await doLogin(login,pw)}catch(e){setErr(e.message)}finally{setLoading(false)}
+  };
+  return <div className="login-bg"><div className="login-card">
+    <span className="brand">Casa 77</span>
+    <h1>BPO Financeiro</h1>
+    <p style={{textAlign:'center',color:'var(--text2)',marginBottom:24,fontSize:13}}>Acesse sua conta para continuar</p>
+    {err&&<div className="alert-box" style={{marginBottom:16}}>{err}</div>}
+    <form onSubmit={go}>
+      <div className="form-group"><label>Login</label><input value={login} onChange={e=>setLogin(e.target.value)} placeholder="usuario" required/></div>
+      <div className="form-group"><label>Senha</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="senha" required/></div>
+      <button className="btn btn-primary btn-block" disabled={loading} style={{marginTop:8}}>{loading?'Entrando...':'Entrar'}</button>
+    </form>
+  </div></div>;
+}
+
+/* ==================== DASHBOARD ==================== */
+function Dashboard({units:UL}){
+  const [d,setD]=useState(null);
+  const [period,setPeriod]=useState('month');
+  const [uf,setUf]=useState('');
+  const load=useCallback(()=>{
+    let from,to;const t=todayStr();
+    if(period==='today'){from=to=t}
+    else if(period==='7d'){from=t;to=new Date(Date.now()+7*864e5).toISOString().split('T')[0]}
+    else if(period==='30d'){from=new Date(Date.now()-30*864e5).toISOString().split('T')[0];to=t}
+    else if(period==='month'){from=monthStart();to=monthEnd()}
+    else{const x=new Date();x.setMonth(x.getMonth()-1);from=`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-01`;const e=new Date(x.getFullYear(),x.getMonth()+1,0);to=e.toISOString().split('T')[0]}
+    let q=`?from=${from}&to=${to}`;if(uf)q+=`&unitId=${uf}`;
+    api(`/dashboard${q}`).then(setD).catch(()=>{});
+  },[period,uf]);
+  useEffect(()=>{load()},[load]);
+  if(!d)return <div className="card"><p>Carregando dashboard...</p></div>;
+  return <>
+    {d.vencidas>0&&<div className="alert-box">{d.vencidas} conta(s) vencida(s)!</div>}
+    {d.vencem_hoje>0&&<div className="alert-box warning">{d.vencem_hoje} conta(s) vence(m) hoje!</div>}
+    <div className="search-bar">
+      <select className="filter-select" value={period} onChange={e=>setPeriod(e.target.value)}>
+        <option value="today">Hoje</option><option value="7d">7 Dias</option><option value="30d">30 Dias</option>
+        <option value="month">Mes Atual</option><option value="last">Mes Anterior</option>
+      </select>
+      <select className="filter-select" value={uf} onChange={e=>setUf(e.target.value)}>
+        <option value="">Todas Unidades</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+      </select>
+    </div>
+    <div className="kpi-grid">
+      <div className="kpi-card"><div className="label">Total a Pagar</div><div className="value">{fmt(d.totalPagar)}</div></div>
+      <div className="kpi-card"><div className="label">Total Pago</div><div className="value success">{fmt(d.totalPago)}</div></div>
+      <div className="kpi-card"><div className="label">Em Aberto</div><div className="value warning">{fmt(d.emAberto)}</div></div>
+      <div className="kpi-card"><div className="label">Vencido</div><div className="value danger">{fmt(d.vencido)}</div></div>
+      <div className="kpi-card"><div className="label">Pagar Hoje</div><div className="value">{fmt(d.venceHoje)}</div></div>
+      <div className="kpi-card"><div className="label">Proximos 7 Dias</div><div className="value">{fmt(d.prox7)}</div></div>
+      <div className="kpi-card"><div className="label">Previsto Assinatura</div><div className="value">{fmt(d.previstoAssinatura)}</div></div>
+      <div className="kpi-card"><div className="label">Ja Recebido</div><div className="value success">{fmt(d.jaRecebido)}</div></div>
+      <div className="kpi-card"><div className="label">Falta Faturar Avulso</div><div className="value danger">{fmt(d.faltaAvulso)}</div></div>
+    </div>
+    <div className="card">
+      <div className="card-title">Formula Central</div>
+      <p style={{fontSize:14,color:'var(--text2)'}}>Contas a Pagar ({fmt(d.totalPagar)}) - Assinatura ({fmt(d.previstoAssinatura)}) - Recebido ({fmt(d.jaRecebido)}) = <strong style={{color:'var(--navy)'}}>{fmt(d.faltaAvulso)}</strong></p>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}} className="two-col">
+      <div className="card">
+        <div className="card-title">Custo Fixo vs Variavel</div>
+        <div style={{marginBottom:8}}><span style={{fontSize:13}}>Fixo: <strong>{fmt(d.custoFixo)}</strong></span></div>
+        <div style={{height:8,background:'var(--border)',borderRadius:4,overflow:'hidden',marginBottom:12}}><div style={{height:'100%',width:`${d.custoFixo/(d.custoFixo+d.custoVariavel||1)*100}%`,background:'var(--blue)',borderRadius:4}}/></div>
+        <div style={{marginBottom:8}}><span style={{fontSize:13}}>Variavel: <strong>{fmt(d.custoVariavel)}</strong></span></div>
+        <div style={{height:8,background:'var(--border)',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',width:`${d.custoVariavel/(d.custoFixo+d.custoVariavel||1)*100}%`,background:'var(--orange)',borderRadius:4}}/></div>
+      </div>
+      <div className="card">
+        <div className="card-title">Top 5 Categorias</div>
+        {(d.top5||[]).map(([cat,val],i)=><div key={i} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)'}}><span style={{fontSize:13}}>{cat}</span><strong style={{fontSize:13}}>{fmt(val)}</strong></div>)}
+        {(!d.top5||d.top5.length===0)&&<p style={{color:'var(--text2)',fontSize:13}}>Sem dados</p>}
+      </div>
+    </div>
+    <div className="card">
+      <div className="card-title">Resultado por Unidade</div>
+      <div className="table-wrap"><table><thead><tr><th>Unidade</th><th>A Pagar</th><th>Pago</th><th>Em Aberto</th><th>A Receber</th><th>Recebido</th><th>Resultado</th></tr></thead>
+      <tbody>{(d.unitResults||[]).map((u,i)=><tr key={i}><td><strong>{u.unit}</strong></td><td>{fmt(u.aPagar)}</td><td style={{color:'var(--green)'}}>{fmt(u.pago)}</td><td>{fmt(u.emAberto)}</td><td>{fmt(u.aReceber)}</td><td style={{color:'var(--green)'}}>{fmt(u.recebido)}</td><td style={{fontWeight:700,color:u.recebido-u.aPagar>=0?'var(--green)':'var(--red)'}}>{fmt(u.recebido-u.aPagar)}</td></tr>)}</tbody></table></div>
+    </div>
+  </>;
+}
+
+/* ==================== ROTINA DIARIA ==================== */
+function RotinaPage({units:UL,user}){
+  const [tab,setTab]=useState('hoje');
+  const [items,setItems]=useState([]);
+  const [sel,setSel]=useState(new Set());
+  const [showBatch,setShowBatch]=useState(false);
+  const [bf,setBf]=useState({paidDate:todayStr(),paidMethod:'PIX',paidObservation:''});
+  const load=()=>{api('/payable').then(d=>{setItems(d);setSel(new Set())}).catch(()=>{})};
+  useEffect(()=>{load()},[]);
+  const t=todayStr();const in7=new Date(Date.now()+7*864e5).toISOString().split('T')[0];
+  const notPaid=items.filter(i=>i.status!=='Pago'&&i.status!=='Cancelado');
+  const filtered=tab==='hoje'?notPaid.filter(i=>i.dueDate===t)
+    :tab==='vencidos'?notPaid.filter(i=>i.dueDate<t)
+    :tab==='7dias'?notPaid.filter(i=>i.dueDate>t&&i.dueDate<=in7)
+    :tab==='aberto'?notPaid
+    :items.filter(i=>i.status==='Pago'&&!i.receipt);
+  const toggle=id=>{const s=new Set(sel);s.has(id)?s.delete(id):s.add(id);setSel(s)};
+  const payOne=async item=>{
+    if(!confirm(`Baixar ${item.supplierName||item.category} - ${fmt(item.amount)}?`))return;
+    await api(`/payable/${item.id}/pay`,{method:'POST',body:JSON.stringify({paidAmount:item.amount,paidMethod:'PIX',paidDate:todayStr()})});
+    load();
+  };
+  const payBatch=async()=>{
+    await api('/payable/batch-pay',{method:'POST',body:JSON.stringify({ids:[...sel],...bf})});
+    setShowBatch(false);load();
+  };
+  const counts={hoje:notPaid.filter(i=>i.dueDate===t).length,vencidos:notPaid.filter(i=>i.dueDate<t).length};
+  return <>
+    <div className="tabs">
+      <div className={`tab ${tab==='hoje'?'active':''}`} onClick={()=>setTab('hoje')}>Vence Hoje{counts.hoje>0&&<span className="badge">{counts.hoje}</span>}</div>
+      <div className={`tab ${tab==='vencidos'?'active':''}`} onClick={()=>setTab('vencidos')}>Vencidos{counts.vencidos>0&&<span className="badge">{counts.vencidos}</span>}</div>
+      <div className={`tab ${tab==='7dias'?'active':''}`} onClick={()=>setTab('7dias')}>Proximos 7 Dias</div>
+      <div className={`tab ${tab==='aberto'?'active':''}`} onClick={()=>setTab('aberto')}>Em Aberto</div>
+      <div className={`tab ${tab==='semc'?'active':''}`} onClick={()=>setTab('semc')}>Sem Comprovante</div>
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr>
+      {user.role==='Admin'&&<th style={{width:30}}><input type="checkbox" className="checkbox" onChange={e=>{e.target.checked?setSel(new Set(filtered.map(i=>i.id))):setSel(new Set())}}/></th>}
+      <th>Fornecedor</th><th>Descricao</th><th>Unidade</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Acoes</th>
+    </tr></thead>
+    <tbody>{filtered.length===0?<tr><td colSpan={8}><div className="empty-state"><p>Nenhuma conta nesta aba</p></div></td></tr>:
+      filtered.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+        {user.role==='Admin'&&<td><input type="checkbox" className="checkbox" checked={sel.has(item.id)} onChange={()=>toggle(item.id)}/></td>}
+        <td>{item.supplierName||'-'}</td><td>{item.description||'-'}</td><td>{u?.abbreviation||'-'}</td>
+        <td style={{color:item.dueDate<t?'var(--red)':undefined}}>{fmtDate(item.dueDate)}</td><td>{fmt(item.amount)}</td>
+        <td><StatusBadge status={item.dueDate<t&&item.status!=='Pago'?'Vencido':item.status}/></td>
+        <td>{item.status!=='Pago'&&<button className="btn btn-success btn-sm" onClick={()=>payOne(item)}>Baixar</button>}</td>
+      </tr>})}
+    </tbody></table></div></div>
+    {sel.size>0&&<div className="float-bar">
+      <span>{sel.size} selecionado(s) - {fmt(filtered.filter(i=>sel.has(i.id)).reduce((s,i)=>s+Number(i.amount),0))}</span>
+      <button className="btn btn-orange" onClick={()=>setShowBatch(true)}>Baixar {sel.size} de uma vez</button>
+    </div>}
+    <Modal show={showBatch} onClose={()=>setShowBatch(false)} title="Baixa em Lote">
+      <div className="form-group"><label>Data do Pagamento</label><input type="date" value={bf.paidDate} onChange={e=>setBf({...bf,paidDate:e.target.value})}/></div>
+      <div className="form-group"><label>Forma de Pagamento</label><select value={bf.paidMethod} onChange={e=>setBf({...bf,paidMethod:e.target.value})}>{PAYMENT_METHODS.map(m=><option key={m}>{m}</option>)}</select></div>
+      <div className="form-group"><label>Observacao</label><textarea value={bf.paidObservation} onChange={e=>setBf({...bf,paidObservation:e.target.value})}/></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowBatch(false)}>Cancelar</button><button className="btn btn-primary" onClick={payBatch}>Confirmar Baixa</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== CONTAS A PAGAR ==================== */
+function ContasPagar({units:UL,user}){
+  const [items,setItems]=useState([]);
+  const [search,setSearch]=useState('');
+  const [stF,setStF]=useState('');
+  const [uF,setUF]=useState('');
+  const [catF,setCatF]=useState('');
+  const [showForm,setShowForm]=useState(false);
+  const [showPay,setShowPay]=useState(null);
+  const [showImport,setShowImport]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [sel,setSel]=useState(new Set());
+  const empty={supplierName:'',contractNumber:'',unitId:'',category:'',subcategory:'',costType:'Fixo',description:'',dueDate:'',amount:'',paymentMethod:'',status:'Em aberto',observation:''};
+  const [form,setForm]=useState(empty);
+  const [pf,setPf]=useState({paidDate:todayStr(),paidAmount:'',paidMethod:'PIX',receipt:'',paidObservation:''});
+  const load=()=>{let q='?';if(stF)q+=`status=${stF}&`;if(uF)q+=`unitId=${uF}&`;if(catF)q+=`category=${catF}&`;if(search)q+=`search=${search}&`;api(`/payable${q}`).then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[stF,uF,catF,search]);
+  const save=async()=>{
+    if(!form.unitId||!form.category||!form.dueDate||!form.amount){alert('Preencha os campos obrigatorios (unidade, categoria, vencimento, valor)');return}
+    const payload={...form,unitId:Number(form.unitId),amount:String(form.amount)};
+    if(editing){await api(`/payable/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/payable',{method:'POST',body:JSON.stringify(payload)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const pay=async()=>{
+    await api(`/payable/${showPay.id}/pay`,{method:'POST',body:JSON.stringify({...pf,paidAmount:pf.paidAmount||showPay.amount})});
+    setShowPay(null);load();
+  };
+  const del=async id=>{if(confirm('Excluir esta conta?')){await api(`/payable/${id}`,{method:'DELETE'});load()}};
+  const edit=item=>{setForm({...item,unitId:String(item.unitId)});setEditing(item.id);setShowForm(true)};
+  const handleImport=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try{
+      const data=await file.arrayBuffer();const wb=XLSX.read(data);
+      // Modelo BPO Casa 77: aba "Geral" com meses (JANEIRO..DEZEMBRO) em colunas
+      const sn=wb.SheetNames.find(n=>norm(n)==='geral')||wb.SheetNames[0];
+      const grid=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',blankrows:false});
+      // localizar a linha de cabecalho (FORNECEDORES/UNIDADE + nomes de meses)
+      let hi=-1;
+      for(let i=0;i<Math.min(grid.length,15);i++){const cells=grid[i].map(norm);
+        if((cells.some(c=>c.includes('fornecedor'))||cells.includes('unidade'))&&cells.some(c=>MONTHS_FULL[c]!=null)){hi=i;break}}
+      if(hi<0){alert('Nao foi possivel reconhecer a planilha. Verifique se ha colunas FORNECEDORES, UNIDADE e meses (JANEIRO a DEZEMBRO).');return}
+      const header=grid[hi].map(norm);
+      const fornCol=header.findIndex(c=>c.includes('fornecedor'));
+      const uniCol=header.findIndex(c=>c==='unidade');
+      const contractCol=header.findIndex(c=>c.includes('contrato'));
+      const vencDayCol=header.findIndex(c=>c.startsWith('venc')&&!c.includes('final'));
+      const catCol=uniCol>0?uniCol-1:-1;
+      // colunas de meses com deteccao automatica de ano (vira o ano quando o mes recua)
+      const monthCols=[];let yr=new Date().getFullYear();let prevM=0;
+      header.forEach((c,idx)=>{const m=MONTHS_FULL[c];if(m){if(m<=prevM)yr++;monthCols.push({col:idx,month:m,year:yr});prevM=m}});
+      if(!monthCols.length){alert('Nenhuma coluna de mes encontrada na planilha.');return}
+      let costType='Fixo';const records=[];
+      for(let i=hi+1;i<grid.length;i++){
+        const row=grid[i];
+        // linhas de secao definem o tipo de custo
+        const sec=norm(row[contractCol>=0?contractCol:1]);
+        if(sec.includes('despesas fixas')){costType='Fixo';continue}
+        if(sec.includes('despesas vari')){costType='Variavel';continue}
+        if(sec==='comissoes'){costType='Variavel';continue}
+        const ua=String(row[uniCol]||'').toUpperCase().trim();
+        const unit=UL.find(u=>u.abbreviation===ua);
+        if(!unit)continue; // pula totais/subtotais e secoes (sem unidade valida)
+        const supplier=String(row[fornCol]||'').trim();
+        const category=mapCategory(catCol>=0?row[catCol]:'');
+        const contractRaw=contractCol>=0?String(row[contractCol]||'').trim():'';
+        const contract=contractRaw&&contractRaw!=='-'?contractRaw:'';
+        const dayM=(vencDayCol>=0?String(row[vencDayCol]):'').match(/\d+/);
+        let day=dayM?parseInt(dayM[0]):10;if(!day||day<1)day=10;
+        for(const mc of monthCols){
+          const val=Number(row[mc.col]);if(!val||val<=0)continue;
+          const dim=new Date(mc.year,mc.month,0).getDate();const dd=Math.min(day,dim);
+          records.push({supplierName:supplier,contractNumber:contract,unitId:unit.id,category,costType,dueDate:`${mc.year}-${String(mc.month).padStart(2,'0')}-${String(dd).padStart(2,'0')}`,amount:String(val),status:'Em aberto'});
+        }
+      }
+      if(!records.length){alert('Nenhum lancamento encontrado para importar.');return}
+      await api('/payable',{method:'POST',body:JSON.stringify(records)});
+      alert(`${records.length} conta(s) importada(s)`);load();
+    }catch(err){alert('Erro ao importar planilha: '+(err.message||err))}
+    setShowImport(false);
+  };
+  const t=todayStr();
+  return <>
+    <div className="search-bar">
+      <div className="search-input"><input placeholder="Buscar fornecedor, descricao, categoria..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      <select className="filter-select" value={stF} onChange={e=>setStF(e.target.value)}><option value="">Status</option>{PAY_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
+      <select className="filter-select" value={uF} onChange={e=>setUF(e.target.value)}><option value="">Unidade</option>{UL.map(u=><option key={u.id} value={u.id}>{u.abbreviation}</option>)}</select>
+      <select className="filter-select" value={catF} onChange={e=>setCatF(e.target.value)}><option value="">Categoria</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
+      <button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Nova Conta</button>
+      {user.role!=='Assistente'&&<button className="btn btn-outline" onClick={()=>setShowImport(true)}>Importar Excel</button>}
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr>
+      {user.role==='Admin'&&<th style={{width:30}}><input type="checkbox" className="checkbox" onChange={e=>{e.target.checked?setSel(new Set(items.map(i=>i.id))):setSel(new Set())}}/></th>}
+      <th>Fornecedor</th><th>Unidade</th><th>Categoria</th><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Acoes</th>
+    </tr></thead>
+    <tbody>{items.length===0?<tr><td colSpan={9}><div className="empty-state"><p>Nenhuma conta cadastrada</p></div></td></tr>:
+      items.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+        {user.role==='Admin'&&<td><input type="checkbox" className="checkbox" checked={sel.has(item.id)} onChange={()=>{const s=new Set(sel);s.has(item.id)?s.delete(item.id):s.add(item.id);setSel(s)}}/></td>}
+        <td>{item.supplierName||'-'}</td><td>{u?.abbreviation||'-'}</td><td>{item.category}</td><td>{item.costType}</td>
+        <td style={{color:item.dueDate<t&&item.status!=='Pago'?'var(--red)':undefined}}>{fmtDate(item.dueDate)}</td>
+        <td>{fmt(item.amount)}</td><td><StatusBadge status={item.dueDate<t&&item.status==='Em aberto'?'Vencido':item.status}/></td>
+        <td><div className="actions-cell">
+          {item.status!=='Pago'&&<button className="btn btn-success btn-sm" onClick={()=>{setPf({paidDate:todayStr(),paidAmount:item.amount,paidMethod:'PIX',receipt:'',paidObservation:''});setShowPay(item)}}>Baixar</button>}
+          <button className="btn btn-outline btn-sm" onClick={()=>edit(item)}>Editar</button>
+          <a className="btn btn-outline btn-sm" href={gcalUrl(`Pagar: ${item.supplierName||item.category}`,item.dueDate,`${fmt(item.amount)} - ${item.category}`)} target="_blank">&#128197;</a>
+          {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+        </div></td>
+      </tr>})}
+    </tbody></table></div></div>
+    {sel.size>0&&user.role==='Admin'&&<div className="float-bar">
+      <span>{sel.size} selecionado(s)</span>
+      <button className="btn btn-orange" onClick={async()=>{await api('/payable/batch-pay',{method:'POST',body:JSON.stringify({ids:[...sel],paidDate:todayStr(),paidMethod:'PIX'})});setSel(new Set());load()}}>Baixar {sel.size} de uma vez</button>
+    </div>}
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Conta':'Nova Conta a Pagar'}>
+      <div className="form-row"><div className="form-group"><label>Fornecedor</label><input value={form.supplierName} onChange={e=>setForm({...form,supplierName:e.target.value})}/></div><div className="form-group"><label>N Contrato</label><input value={form.contractNumber} onChange={e=>setForm({...form,contractNumber:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Unidade *</label><select value={form.unitId} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div><div className="form-group"><label>Categoria *</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}><option value="">Selecione</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div></div>
+      <div className="form-row"><div className="form-group"><label>Subcategoria</label><input value={form.subcategory||''} onChange={e=>setForm({...form,subcategory:e.target.value})}/></div><div className="form-group"><label>Tipo de Custo *</label><select value={form.costType} onChange={e=>setForm({...form,costType:e.target.value})}><option>Fixo</option><option>Variavel</option></select></div></div>
+      <div className="form-group"><label>Descricao</label><input value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+      <div className="form-row"><div className="form-group"><label>Vencimento *</label><input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></div><div className="form-group"><label>Valor *</label><input type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Forma de Pagamento</label><select value={form.paymentMethod||''} onChange={e=>setForm({...form,paymentMethod:e.target.value})}><option value="">Selecione</option>{PAYMENT_METHODS.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Status</label><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>{PAY_STATUSES.map(s=><option key={s}>{s}</option>)}</select></div></div>
+      <div className="form-group"><label>Observacao</label><textarea value={form.observation||''} onChange={e=>setForm({...form,observation:e.target.value})}/></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+    <Modal show={!!showPay} onClose={()=>setShowPay(null)} title="Baixar Pagamento">
+      <div className="form-row"><div className="form-group"><label>Data Pagamento</label><input type="date" value={pf.paidDate} onChange={e=>setPf({...pf,paidDate:e.target.value})}/></div><div className="form-group"><label>Valor Pago</label><input type="number" step="0.01" value={pf.paidAmount} onChange={e=>setPf({...pf,paidAmount:e.target.value})}/></div></div>
+      <div className="form-group"><label>Forma de Pagamento</label><select value={pf.paidMethod} onChange={e=>setPf({...pf,paidMethod:e.target.value})}>{PAYMENT_METHODS.map(m=><option key={m}>{m}</option>)}</select></div>
+      <div className="form-group"><label>Comprovante (URL/referencia)</label><input value={pf.receipt} onChange={e=>setPf({...pf,receipt:e.target.value})}/></div>
+      <div className="form-group"><label>Observacao</label><textarea value={pf.paidObservation} onChange={e=>setPf({...pf,paidObservation:e.target.value})}/></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowPay(null)}>Cancelar</button><button className="btn btn-primary" onClick={pay}>Confirmar Baixa</button></div>
+    </Modal>
+    <Modal show={showImport} onClose={()=>setShowImport(false)} title="Importar Planilha Excel">
+      <p style={{fontSize:13,color:'var(--text2)',marginBottom:16}}>Modelo Controle Financeiro (aba "Geral"): colunas FORNECEDORES, UNIDADE, VENC. e os meses JANEIRO a DEZEMBRO. Cada valor mensal vira uma conta com vencimento no dia indicado. O ano vira automaticamente para o seguinte quando os meses recomecam em janeiro. Siglas BA, RG, AV, PF mapeadas automaticamente; linhas de total e cabecalhos de secao sao ignorados.</p>
+      <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport}/>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowImport(false)}>Fechar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== CONTAS A RECEBER ==================== */
+function ContasReceber({units:UL,user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [showImport,setShowImport]=useState(false);
+  const [uF,setUF]=useState('');const [stF,setStF]=useState('');
+  const empty={description:'',unitId:'',type:'Assinatura',amount:'',expectedDate:'',receivedDate:'',status:'Previsto',observation:''};
+  const [form,setForm]=useState(empty);
+  const load=()=>{let q='?';if(uF)q+=`unitId=${uF}&`;if(stF)q+=`status=${stF}&`;api(`/receivable${q}`).then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[uF,stF]);
+  const save=async()=>{
+    if(!form.unitId||!form.description||!form.amount){alert('Preencha campos obrigatorios');return}
+    const payload={...form,unitId:Number(form.unitId),amount:String(form.amount)};
+    if(editing){await api(`/receivable/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/receivable',{method:'POST',body:JSON.stringify(payload)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir?')){await api(`/receivable/${id}`,{method:'DELETE'});load()}};
+  const previsto=items.reduce((s,i)=>s+Number(i.amount),0);
+  const recebido=items.filter(i=>i.status==='Recebido').reduce((s,i)=>s+Number(i.amount),0);
+  const assinaturas=items.filter(i=>i.type==='Assinatura');
+  const handleImport=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    const data=await file.arrayBuffer();const wb=XLSX.read(data);const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    const records=rows.map(row=>{
+      const ua=String(row['Unidade']||row['unidade']||'').toUpperCase().trim();
+      const unit=UL.find(u=>u.abbreviation===ua)||UL[0];
+      return{description:row['Nome']||row['nome']||row['Assinante']||row['assinante']||'',unitId:unit?.id||UL[0]?.id,type:'Assinatura',amount:String(Number(row['Valor']||row['valor']||0)),expectedDate:row['Data']||row['data']||todayStr(),status:row['Status']||row['status']||'Previsto',observation:''};
+    }).filter(r=>r.amount!=='0');
+    if(records.length>0){await api('/receivable',{method:'POST',body:JSON.stringify(records)});alert(`${records.length} registro(s) importado(s)`);load()}
+    setShowImport(false);
+  };
+  return <>
+    <div className="kpi-grid">
+      <div className="kpi-card"><div className="label">Previsto</div><div className="value">{fmt(previsto)}</div></div>
+      <div className="kpi-card"><div className="label">Recebido</div><div className="value success">{fmt(recebido)}</div></div>
+      <div className="kpi-card"><div className="label">Total Assinatura</div><div className="value">{fmt(assinaturas.reduce((s,i)=>s+Number(i.amount),0))}</div></div>
+      <div className="kpi-card"><div className="label">Assinantes</div><div className="value">{assinaturas.length}</div></div>
+    </div>
+    <div className="search-bar">
+      <select className="filter-select" value={uF} onChange={e=>setUF(e.target.value)}><option value="">Unidade</option>{UL.map(u=><option key={u.id} value={u.id}>{u.abbreviation}</option>)}</select>
+      <select className="filter-select" value={stF} onChange={e=>setStF(e.target.value)}><option value="">Status</option><option>Previsto</option><option>Recebido</option><option>Cancelado</option></select>
+      <button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Novo</button>
+      {user.role!=='Assistente'&&<button className="btn btn-outline" onClick={()=>setShowImport(true)}>Importar Excel</button>}
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Descricao</th><th>Unidade</th><th>Tipo</th><th>Valor</th><th>Previsto</th><th>Recebido</th><th>Status</th><th>Acoes</th></tr></thead>
+    <tbody>{items.length===0?<tr><td colSpan={8}><div className="empty-state"><p>Nenhum registro</p></div></td></tr>:items.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+      <td>{item.description}</td><td>{u?.abbreviation||'-'}</td><td>{item.type}</td><td>{fmt(item.amount)}</td>
+      <td>{fmtDate(item.expectedDate)}</td><td>{fmtDate(item.receivedDate)}</td><td><StatusBadge status={item.status}/></td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({...item,unitId:String(item.unitId)});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {item.status==='Previsto'&&<button className="btn btn-success btn-sm" onClick={async()=>{await api(`/receivable/${item.id}`,{method:'PUT',body:JSON.stringify({...item,status:'Recebido',receivedDate:todayStr()})});load()}}>Receber</button>}
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>})}</tbody></table></div></div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar':'Novo Recebivel'}>
+      <div className="form-group"><label>Descricao *</label><input value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+      <div className="form-row"><div className="form-group"><label>Unidade *</label><select value={form.unitId} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div><div className="form-group"><label>Tipo</label><select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{REC_TYPES.map(t=><option key={t}>{t}</option>)}</select></div></div>
+      <div className="form-row"><div className="form-group"><label>Valor *</label><input type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></div><div className="form-group"><label>Data Prevista</label><input type="date" value={form.expectedDate||''} onChange={e=>setForm({...form,expectedDate:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Data Recebida</label><input type="date" value={form.receivedDate||''} onChange={e=>setForm({...form,receivedDate:e.target.value})}/></div><div className="form-group"><label>Status</label><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>Previsto</option><option>Recebido</option><option>Cancelado</option></select></div></div>
+      <div className="form-group"><label>Observacao</label><textarea value={form.observation||''} onChange={e=>setForm({...form,observation:e.target.value})}/></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+    <Modal show={showImport} onClose={()=>setShowImport(false)} title="Importar Assinaturas">
+      <p style={{fontSize:13,color:'var(--text2)',marginBottom:16}}>Colunas aceitas: Nome/Assinante, Unidade (sigla), Valor, Status, Data</p>
+      <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport}/>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowImport(false)}>Fechar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== FLUXO DE CAIXA ==================== */
+function FluxoCaixa({units:UL,user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [uF,setUF]=useState('');
+  const [fromD,setFromD]=useState(monthStart());
+  const [toD,setToD]=useState(monthEnd());
+  const empty={date:todayStr(),unitId:'',type:'Entrada',paymentMethod:'PIX',description:'',amount:'',responsible:''};
+  const [form,setForm]=useState(empty);
+  const load=()=>{let q=`?from=${fromD}&to=${toD}`;if(uF)q+=`&unitId=${uF}`;api(`/cashflow${q}`).then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[uF,fromD,toD]);
+  const save=async()=>{
+    if(!form.unitId||!form.amount||!form.date){alert('Preencha campos obrigatorios');return}
+    const payload={...form,unitId:Number(form.unitId),amount:String(form.amount)};
+    if(editing){await api(`/cashflow/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/cashflow',{method:'POST',body:JSON.stringify(payload)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir?')){await api(`/cashflow/${id}`,{method:'DELETE'});load()}};
+  const entradas=items.filter(i=>i.type==='Entrada').reduce((s,i)=>s+Number(i.amount),0);
+  const saidas=items.filter(i=>i.type==='Saida').reduce((s,i)=>s+Number(i.amount),0);
+  return <>
+    <div className="kpi-grid">
+      <div className="kpi-card"><div className="label">Total Entradas</div><div className="value success">{fmt(entradas)}</div></div>
+      <div className="kpi-card"><div className="label">Total Saidas</div><div className="value danger">{fmt(saidas)}</div></div>
+      <div className="kpi-card"><div className="label">Saldo do Periodo</div><div className={`value ${entradas-saidas>=0?'success':'danger'}`}>{fmt(entradas-saidas)}</div></div>
+    </div>
+    <div className="search-bar">
+      <input type="date" className="filter-select" value={fromD} onChange={e=>setFromD(e.target.value)}/>
+      <input type="date" className="filter-select" value={toD} onChange={e=>setToD(e.target.value)}/>
+      <select className="filter-select" value={uF} onChange={e=>setUF(e.target.value)}><option value="">Unidade</option>{UL.map(u=><option key={u.id} value={u.id}>{u.abbreviation}</option>)}</select>
+      <button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Novo</button>
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Data</th><th>Unidade</th><th>Tipo</th><th>Forma</th><th>Descricao</th><th>Valor</th><th>Responsavel</th><th>Acoes</th></tr></thead>
+    <tbody>{items.length===0?<tr><td colSpan={8}><div className="empty-state"><p>Nenhum lancamento</p></div></td></tr>:items.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id} style={{borderLeft:`3px solid ${item.type==='Entrada'?'var(--green)':'var(--red)'}`}}>
+      <td>{fmtDate(item.date)}</td><td>{u?.abbreviation||'-'}</td><td style={{color:item.type==='Entrada'?'var(--green)':'var(--red)',fontWeight:600}}>{item.type}</td>
+      <td>{item.paymentMethod||'-'}</td><td>{item.description||'-'}</td><td style={{fontWeight:600}}>{fmt(item.amount)}</td><td>{item.responsible||'-'}</td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({...item,unitId:String(item.unitId)});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>})}</tbody></table></div></div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar':'Novo Lancamento'}>
+      <div className="form-row"><div className="form-group"><label>Data *</label><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div><div className="form-group"><label>Unidade *</label><select value={form.unitId} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div></div>
+      <div className="form-row"><div className="form-group"><label>Tipo *</label><select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option>Entrada</option><option>Saida</option></select></div><div className="form-group"><label>Forma</label><select value={form.paymentMethod||''} onChange={e=>setForm({...form,paymentMethod:e.target.value})}><option value="">Selecione</option>{PAYMENT_METHODS.map(m=><option key={m}>{m}</option>)}</select></div></div>
+      <div className="form-group"><label>Descricao</label><input value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+      <div className="form-row"><div className="form-group"><label>Valor *</label><input type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></div><div className="form-group"><label>Responsavel</label><input value={form.responsible||''} onChange={e=>setForm({...form,responsible:e.target.value})}/></div></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== COMISSOES ==================== */
+function Comissoes({units:UL,barbersList:BL,user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [uF,setUF]=useState('');const [mF,setMF]=useState('');
+  const [showImport,setShowImport]=useState(false);
+  const [sendWpp,setSendWpp]=useState(true);
+  const empty={barberId:'',unitId:'',referenceMonth:'',commissionAvulso:'0',commissionAssinatura:'0',commissionProduto:'0',otherBonuses:'0',nfStatus:'Pendente',nfNumber:'',paymentStatus:'Pendente',status:'Previsao'};
+  const [form,setForm]=useState(empty);
+  const load=()=>{let q='?';if(uF)q+=`unitId=${uF}&`;if(mF)q+=`referenceMonth=${mF}&`;api(`/commissions${q}`).then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[uF,mF]);
+  const barber=form.barberId?BL.find(b=>b.id===Number(form.barberId)):null;
+  useEffect(()=>{if(barber&&!editing)setForm(f=>({...f,unitId:String(barber.unitId)}))},[form.barberId]);
+  const total=Number(form.commissionAvulso||0)+Number(form.commissionAssinatura||0)+Number(form.commissionProduto||0)+Number(form.otherBonuses||0);
+  const save=async()=>{
+    if(!form.barberId||!form.unitId||!form.referenceMonth){alert('Preencha barbeiro, unidade e mes');return}
+    const payload={...form,barberId:Number(form.barberId),unitId:Number(form.unitId),total:String(total)};
+    if(editing){await api(`/commissions/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/commissions',{method:'POST',body:JSON.stringify(payload)})}
+    if(sendWpp&&barber?.whatsapp){
+      const unit=UL.find(u=>u.id===Number(form.unitId));
+      const msg=`*Comissao ${form.referenceMonth}*\nBarbeiro: ${barber.name}\nAvulso: ${fmt(form.commissionAvulso)}\nAssinatura: ${fmt(form.commissionAssinatura)}\nProduto: ${fmt(form.commissionProduto)}\nOutras: ${fmt(form.otherBonuses)}\n*TOTAL: ${fmt(total)}*\nCNPJ: ${unit?.cnpj||'-'}\nData-base: ultimo dia do mes\n\nPor favor, envie a NF.`;
+      window.open(wppUrl(barber.whatsapp,msg),'_blank');
+    }
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir?')){await api(`/commissions/${id}`,{method:'DELETE'});load()}};
+  const exportXls=()=>{
+    const data=items.map(item=>{const b=BL.find(b=>b.id===item.barberId);const u=UL.find(u=>u.id===item.unitId);
+      return{Barbeiro:b?.name||'-',Unidade:u?.abbreviation||'-',Mes:item.referenceMonth,Avulso:item.commissionAvulso,Assinatura:item.commissionAssinatura,Produto:item.commissionProduto,Outras:item.otherBonuses,Total:item.total,'Status NF':item.nfStatus,'Status Pgto':item.paymentStatus};
+    });
+    const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Comissoes');XLSX.writeFile(wb,'comissoes.xlsx');
+  };
+  const handleImport=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    const data=await file.arrayBuffer();const wb=XLSX.read(data);
+    const sn=wb.SheetNames.find(n=>n.toLowerCase().includes('comiss'))||wb.SheetNames[0];
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
+    const records=[];
+    for(const row of rows){
+      const bn=row['Barbeiro']||row['barbeiro']||'';
+      const b=BL.find(b=>b.name.toLowerCase()===bn.toLowerCase());if(!b)continue;
+      const ua=String(row['Unidade']||row['unidade']||'').toUpperCase().trim();
+      const unit=UL.find(u=>u.abbreviation===ua);
+      records.push({barberId:b.id,unitId:unit?.id||b.unitId,referenceMonth:row['Mes Referencia']||row['mes']||row['Mes']||'',commissionAvulso:String(Number(row['Avulso']||row['Comissao Avulso']||0)),commissionAssinatura:String(Number(row['Assinatura']||row['Comissao Assinatura']||0)),commissionProduto:String(Number(row['Produto']||row['Comissao Produto']||0)),otherBonuses:String(Number(row['Outras']||row['Outras Comissoes']||0)),total:String(Number(row['Total']||0)),nfStatus:row['NF']?'Recebida':'Pendente',nfNumber:row['NF']||'',paymentStatus:'Pendente',status:row['Status']||'Previsao'});
+    }
+    if(records.length>0){await api('/commissions',{method:'POST',body:JSON.stringify(records)});alert(`${records.length} comissao(oes) importada(s)`);load()}
+    setShowImport(false);
+  };
+  return <>
+    <div className="search-bar">
+      <select className="filter-select" value={uF} onChange={e=>setUF(e.target.value)}><option value="">Unidade</option>{UL.map(u=><option key={u.id} value={u.id}>{u.abbreviation}</option>)}</select>
+      <input className="filter-select" placeholder="Mes (ex: 2026-01)" value={mF} onChange={e=>setMF(e.target.value)}/>
+      <button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Nova</button>
+      {user.role!=='Assistente'&&<button className="btn btn-outline" onClick={()=>setShowImport(true)}>Importar</button>}
+      <button className="btn btn-outline" onClick={exportXls}>Exportar Excel</button>
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Barbeiro</th><th>Unidade</th><th>Mes</th><th>Avulso</th><th>Assinatura</th><th>Produto</th><th>Outras</th><th>Total</th><th>NF</th><th>Pgto</th><th>Acoes</th></tr></thead>
+    <tbody>{items.length===0?<tr><td colSpan={11}><div className="empty-state"><p>Nenhuma comissao</p></div></td></tr>:items.map(item=>{const b=BL.find(b=>b.id===item.barberId);const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+      <td>{b?.name||'-'}</td><td>{u?.abbreviation||'-'}</td><td>{item.referenceMonth}</td>
+      <td>{fmt(item.commissionAvulso)}</td><td>{fmt(item.commissionAssinatura)}</td><td>{fmt(item.commissionProduto)}</td><td>{fmt(item.otherBonuses)}</td>
+      <td style={{fontWeight:700}}>{fmt(item.total)}</td><td><StatusBadge status={item.nfStatus}/></td><td><StatusBadge status={item.paymentStatus}/></td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({...item,barberId:String(item.barberId),unitId:String(item.unitId)});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {b?.whatsapp&&<a className="btn btn-outline btn-sm" href={wppUrl(b.whatsapp,`Comissao ${item.referenceMonth}: ${fmt(item.total)}`)} target="_blank">&#128242;</a>}
+        <a className="btn btn-outline btn-sm" href={gcalUrl(`Comissao ${b?.name||''}`,`${item.referenceMonth}-05`,fmt(item.total))} target="_blank">&#128197;</a>
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>})}</tbody></table></div></div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Comissao':'Nova Comissao'}>
+      <div className="form-row"><div className="form-group"><label>Barbeiro *</label><select value={form.barberId} onChange={e=>setForm({...form,barberId:e.target.value})}><option value="">Selecione</option>{BL.filter(b=>b.status==='Ativo').map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div className="form-group"><label>Unidade *</label><select value={form.unitId} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div></div>
+      <div className="form-group"><label>Mes Referencia * (ex: 2026-01)</label><input value={form.referenceMonth} onChange={e=>setForm({...form,referenceMonth:e.target.value})}/></div>
+      <div className="form-row"><div className="form-group"><label>Avulso</label><input type="number" step="0.01" value={form.commissionAvulso} onChange={e=>setForm({...form,commissionAvulso:e.target.value})}/></div><div className="form-group"><label>Assinatura</label><input type="number" step="0.01" value={form.commissionAssinatura} onChange={e=>setForm({...form,commissionAssinatura:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Produto</label><input type="number" step="0.01" value={form.commissionProduto} onChange={e=>setForm({...form,commissionProduto:e.target.value})}/></div><div className="form-group"><label>Outras/Bonificacao</label><input type="number" step="0.01" value={form.otherBonuses} onChange={e=>setForm({...form,otherBonuses:e.target.value})}/></div></div>
+      <div style={{padding:'12px 0',fontWeight:700,fontSize:16,color:'var(--navy)'}}>Total: {fmt(total)}</div>
+      <p style={{fontSize:12,color:'var(--text2)'}}>Regra: Avulso e produto no 5o dia util | Assinatura no 10o dia util</p>
+      <div className="form-row"><div className="form-group"><label>Status NF</label><select value={form.nfStatus} onChange={e=>setForm({...form,nfStatus:e.target.value})}><option>Pendente</option><option>Solicitada</option><option>Recebida</option></select></div><div className="form-group"><label>N NF</label><input value={form.nfNumber||''} onChange={e=>setForm({...form,nfNumber:e.target.value})}/></div></div>
+      <div className="form-group"><label>Status Pagamento</label><select value={form.paymentStatus} onChange={e=>setForm({...form,paymentStatus:e.target.value})}><option>Pendente</option><option>Pago</option></select></div>
+      <div style={{marginTop:12}}><label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,cursor:'pointer'}}><input type="checkbox" checked={sendWpp} onChange={e=>setSendWpp(e.target.checked)}/> Enviar WhatsApp ao salvar</label></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+    <Modal show={showImport} onClose={()=>setShowImport(false)} title="Importar Comissoes">
+      <p style={{fontSize:13,color:'var(--text2)',marginBottom:16}}>Colunas: Barbeiro, Unidade (sigla), Mes Referencia, Avulso, Assinatura, Produto, Outras, Total, Status, NF</p>
+      <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport}/>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowImport(false)}>Fechar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== FORNECEDORES ==================== */
+function Fornecedores({units:UL,user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [search,setSearch]=useState('');
+  const empty={name:'',cnpjCpf:'',unitId:'',category:'',phone:'',email:'',observation:'',status:'Ativo'};
+  const [form,setForm]=useState(empty);
+  const load=()=>{api('/suppliers').then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[]);
+  const save=async()=>{
+    if(!form.name){alert('Nome obrigatorio');return}
+    const payload={...form,unitId:form.unitId?Number(form.unitId):null};
+    if(editing){await api(`/suppliers/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/suppliers',{method:'POST',body:JSON.stringify(payload)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir?')){await api(`/suppliers/${id}`,{method:'DELETE'});load()}};
+  const importFromPay=async()=>{const r=await api('/suppliers/import-from-payable',{method:'POST'});alert(`${r.imported} fornecedor(es) importado(s)`);load()};
+  const filtered=items.filter(i=>{if(!search)return true;const s=search.toLowerCase();return(i.name||'').toLowerCase().includes(s)||(i.cnpjCpf||'').includes(s)||(i.category||'').toLowerCase().includes(s)||(i.phone||'').includes(s)||(i.email||'').toLowerCase().includes(s)});
+  return <>
+    <div className="search-bar">
+      <div className="search-input"><input placeholder="Buscar por nome, CNPJ, categoria, telefone, email..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      <button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Novo</button>
+      {user.role!=='Assistente'&&<button className="btn btn-outline" onClick={importFromPay}>Importar das Contas a Pagar</button>}
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Nome</th><th>CNPJ/CPF</th><th>Unidade</th><th>Categoria</th><th>Telefone</th><th>Email</th><th>Status</th><th>Acoes</th></tr></thead>
+    <tbody>{filtered.length===0?<tr><td colSpan={8}><div className="empty-state"><p>Nenhum fornecedor</p></div></td></tr>:filtered.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+      <td>{item.name}</td><td>{item.cnpjCpf||'-'}</td><td>{u?.abbreviation||'-'}</td><td>{item.category||'-'}</td><td>{item.phone||'-'}</td><td>{item.email||'-'}</td><td><StatusBadge status={item.status}/></td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({...item,unitId:item.unitId?String(item.unitId):''});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>})}</tbody></table></div></div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Fornecedor':'Novo Fornecedor'}>
+      <div className="form-row"><div className="form-group"><label>Nome *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="form-group"><label>CNPJ/CPF</label><input value={form.cnpjCpf||''} onChange={e=>setForm({...form,cnpjCpf:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Unidade</label><select value={form.unitId||''} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div><div className="form-group"><label>Categoria</label><select value={form.category||''} onChange={e=>setForm({...form,category:e.target.value})}><option value="">Selecione</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div></div>
+      <div className="form-row"><div className="form-group"><label>Telefone/WhatsApp</label><input value={form.phone||''} onChange={e=>setForm({...form,phone:e.target.value})}/></div><div className="form-group"><label>E-mail</label><input value={form.email||''} onChange={e=>setForm({...form,email:e.target.value})}/></div></div>
+      <div className="form-group"><label>Observacao</label><textarea value={form.observation||''} onChange={e=>setForm({...form,observation:e.target.value})}/></div>
+      <div className="form-group"><label>Status</label><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>Ativo</option><option>Inativo</option></select></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== BARBEIROS ==================== */
+function Barbeiros({units:UL,user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [search,setSearch]=useState('');
+  const empty={name:'',unitId:'',whatsapp:'',cpf:'',cnpj:'',pixKey:'',bondType:'MEI',status:'Ativo',observation:''};
+  const [form,setForm]=useState(empty);
+  const load=()=>{api('/barbers').then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[]);
+  const save=async()=>{
+    if(!form.name||!form.unitId){alert('Nome e unidade obrigatorios');return}
+    const payload={...form,unitId:Number(form.unitId)};
+    if(editing){await api(`/barbers/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/barbers',{method:'POST',body:JSON.stringify(payload)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir?')){await api(`/barbers/${id}`,{method:'DELETE'});load()}};
+  const filtered=items.filter(i=>{if(!search)return true;const s=search.toLowerCase();return i.name.toLowerCase().includes(s)||(i.cpf||'').includes(s)||(i.cnpj||'').includes(s)});
+  return <>
+    <div className="search-bar">
+      <div className="search-input"><input placeholder="Buscar por nome, CPF, CNPJ..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      <button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Novo</button>
+    </div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Nome</th><th>Unidade</th><th>WhatsApp</th><th>CPF</th><th>CNPJ</th><th>Chave PIX</th><th>Vinculo</th><th>Status</th><th>Acoes</th></tr></thead>
+    <tbody>{filtered.length===0?<tr><td colSpan={9}><div className="empty-state"><p>Nenhum barbeiro</p></div></td></tr>:filtered.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+      <td>{item.name}</td><td>{u?.abbreviation||'-'}</td><td>{item.whatsapp||'-'}</td><td>{item.cpf||'-'}</td><td>{item.cnpj||'-'}</td><td>{item.pixKey||'-'}</td><td>{item.bondType||'-'}</td><td><StatusBadge status={item.status}/></td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({...item,unitId:String(item.unitId)});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>})}</tbody></table></div></div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Barbeiro':'Novo Barbeiro'}>
+      <div className="form-row"><div className="form-group"><label>Nome *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="form-group"><label>Unidade *</label><select value={form.unitId} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div></div>
+      <div className="form-row"><div className="form-group"><label>WhatsApp</label><input value={form.whatsapp||''} onChange={e=>setForm({...form,whatsapp:e.target.value})}/></div><div className="form-group"><label>CPF</label><input value={form.cpf||''} onChange={e=>setForm({...form,cpf:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>CNPJ</label><input value={form.cnpj||''} onChange={e=>setForm({...form,cnpj:e.target.value})}/></div><div className="form-group"><label>Chave PIX</label><input value={form.pixKey||''} onChange={e=>setForm({...form,pixKey:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Tipo de Vinculo</label><select value={form.bondType||''} onChange={e=>setForm({...form,bondType:e.target.value})}><option>MEI</option><option>CLT</option><option>PJ</option><option>Autonomo</option></select></div><div className="form-group"><label>Status</label><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>Ativo</option><option>Inativo</option></select></div></div>
+      <div className="form-group"><label>Observacao</label><textarea value={form.observation||''} onChange={e=>setForm({...form,observation:e.target.value})}/></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== UNIDADES ==================== */
+function UnidadesPage({units:UL,user,reloadUnits}){
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const empty={name:'',abbreviation:'',cnpj:'',address:'',whatsapp:'',status:'Ativo'};
+  const [form,setForm]=useState(empty);
+  const save=async()=>{
+    if(!form.name||!form.abbreviation){alert('Nome e sigla obrigatorios');return}
+    if(editing){await api(`/units/${editing}`,{method:'PUT',body:JSON.stringify(form)})}
+    else{await api('/units',{method:'POST',body:JSON.stringify(form)})}
+    setShowForm(false);setEditing(null);setForm(empty);reloadUnits();
+  };
+  const del=async id=>{if(confirm('Excluir unidade?')){await api(`/units/${id}`,{method:'DELETE'});reloadUnits()}};
+  return <>
+    <div style={{marginBottom:16}}>{user.role!=='Assistente'&&<button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Nova Unidade</button>}</div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Nome</th><th>Sigla</th><th>CNPJ</th><th>Endereco</th><th>WhatsApp</th><th>Status</th><th>Acoes</th></tr></thead>
+    <tbody>{UL.map(item=><tr key={item.id}>
+      <td>{item.name}</td><td><strong>{item.abbreviation}</strong></td><td>{item.cnpj||'-'}</td><td>{item.address||'-'}</td><td>{item.whatsapp||'-'}</td><td><StatusBadge status={item.status}/></td>
+      <td><div className="actions-cell">
+        {user.role!=='Assistente'&&<button className="btn btn-outline btn-sm" onClick={()=>{setForm(item);setEditing(item.id);setShowForm(true)}}>Editar</button>}
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>)}</tbody></table></div></div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Unidade':'Nova Unidade'}>
+      <div className="form-row"><div className="form-group"><label>Nome *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="form-group"><label>Sigla *</label><input value={form.abbreviation} onChange={e=>setForm({...form,abbreviation:e.target.value})}/></div></div>
+      <div className="form-group"><label>CNPJ</label><input value={form.cnpj||''} onChange={e=>setForm({...form,cnpj:e.target.value})}/></div>
+      <div className="form-group"><label>Endereco</label><input value={form.address||''} onChange={e=>setForm({...form,address:e.target.value})}/></div>
+      <div className="form-row"><div className="form-group"><label>WhatsApp</label><input value={form.whatsapp||''} onChange={e=>setForm({...form,whatsapp:e.target.value})}/></div><div className="form-group"><label>Status</label><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>Ativo</option><option>Inativo</option></select></div></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== RELATORIOS ==================== */
+function Relatorios({units:UL}){
+  const [tab,setTab]=useState('geral');
+  const [d,setD]=useState(null);
+  const [fromD,setFromD]=useState(monthStart());const [toD,setToD]=useState(monthEnd());
+  const [uF,setUF]=useState('');const [catF,setCatF]=useState('');const [costF,setCostF]=useState('');
+  const load=()=>{let q=`?from=${fromD}&to=${toD}`;if(uF)q+=`&unitId=${uF}`;if(catF)q+=`&category=${catF}`;if(costF)q+=`&costType=${costF}`;api(`/reports${q}`).then(setD).catch(()=>{})};
+  useEffect(()=>{load()},[fromD,toD,uF,catF,costF]);
+  const exportXls=()=>{
+    if(!d)return;
+    const ws=XLSX.utils.json_to_sheet([{'Total a Pagar':d.totalPagar,'Total Pago':d.totalPago,'Em Aberto':d.emAberto,'Vencido':d.vencido,'Assinatura':d.previstoAssinatura,'Recebido':d.jaRecebido,'Falta Avulso':d.faltaAvulso}]);
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Relatorio');
+    if(d.dre){const ws2=XLSX.utils.json_to_sheet([d.dre]);XLSX.utils.book_append_sheet(wb,ws2,'DRE')}
+    XLSX.writeFile(wb,'relatorio_bpo.xlsx');
+  };
+  if(!d)return <div className="card"><p>Carregando relatorio...</p></div>;
+  return <>
+    <div className="tabs"><div className={`tab ${tab==='geral'?'active':''}`} onClick={()=>setTab('geral')}>Relatorio Geral</div><div className={`tab ${tab==='dre'?'active':''}`} onClick={()=>setTab('dre')}>DRE</div></div>
+    <div className="search-bar">
+      <input type="date" className="filter-select" value={fromD} onChange={e=>setFromD(e.target.value)}/>
+      <input type="date" className="filter-select" value={toD} onChange={e=>setToD(e.target.value)}/>
+      <select className="filter-select" value={uF} onChange={e=>setUF(e.target.value)}><option value="">Unidade</option>{UL.map(u=><option key={u.id} value={u.id}>{u.abbreviation}</option>)}</select>
+      {tab==='geral'&&<><select className="filter-select" value={catF} onChange={e=>setCatF(e.target.value)}><option value="">Categoria</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
+      <select className="filter-select" value={costF} onChange={e=>setCostF(e.target.value)}><option value="">Tipo Custo</option><option>Fixo</option><option>Variavel</option></select></>}
+      <button className="btn btn-outline" onClick={exportXls}>Exportar Excel</button>
+      <button className="btn btn-outline" onClick={()=>window.print()}>Imprimir</button>
+    </div>
+    {tab==='geral'?<>
+      <div className="kpi-grid">
+        <div className="kpi-card"><div className="label">Total a Pagar</div><div className="value">{fmt(d.totalPagar)}</div></div>
+        <div className="kpi-card"><div className="label">Total Pago</div><div className="value success">{fmt(d.totalPago)}</div></div>
+        <div className="kpi-card"><div className="label">Em Aberto</div><div className="value warning">{fmt(d.emAberto)}</div></div>
+        <div className="kpi-card"><div className="label">Vencido</div><div className="value danger">{fmt(d.vencido)}</div></div>
+        <div className="kpi-card"><div className="label">Assinatura</div><div className="value">{fmt(d.previstoAssinatura)}</div></div>
+        <div className="kpi-card"><div className="label">Recebido</div><div className="value success">{fmt(d.jaRecebido)}</div></div>
+        <div className="kpi-card"><div className="label">Falta Avulso</div><div className="value danger">{fmt(d.faltaAvulso)}</div></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}} className="two-col">
+        <div className="card"><div className="card-title">Por Categoria</div><div className="table-wrap"><table><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead>
+        <tbody>{Object.entries(d.byCategory||{}).sort((a,b)=>b[1]-a[1]).map(([c,v])=><tr key={c}><td>{c}</td><td>{fmt(v)}</td><td>{d.totalPagar?(v/d.totalPagar*100).toFixed(1):0}%</td></tr>)}</tbody></table></div></div>
+        <div className="card"><div className="card-title">Top 10 Fornecedores</div><div className="table-wrap"><table><thead><tr><th>Fornecedor</th><th>Valor</th></tr></thead>
+        <tbody>{(d.top10Suppliers||[]).map(([n,v])=><tr key={n}><td>{n}</td><td>{fmt(v)}</td></tr>)}</tbody></table></div></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}} className="two-col">
+        <div className="card"><div className="card-title">Por Unidade</div><div className="table-wrap"><table><thead><tr><th>Unidade</th><th>Valor</th><th>%</th></tr></thead>
+        <tbody>{(d.byUnit||[]).map(u=><tr key={u.unit}><td>{u.unit}</td><td>{fmt(u.total)}</td><td>{d.totalPagar?(u.total/d.totalPagar*100).toFixed(1):0}%</td></tr>)}</tbody></table></div></div>
+        <div className="card"><div className="card-title">Por Tipo de Custo</div><div className="table-wrap"><table><thead><tr><th>Tipo</th><th>Valor</th><th>%</th></tr></thead>
+        <tbody><tr><td>Fixo</td><td>{fmt(d.custoFixo)}</td><td>{d.totalPagar?(d.custoFixo/d.totalPagar*100).toFixed(1):0}%</td></tr><tr><td>Variavel</td><td>{fmt(d.custoVariavel)}</td><td>{d.totalPagar?(d.custoVariavel/d.totalPagar*100).toFixed(1):0}%</td></tr></tbody></table></div></div>
+      </div>
+    </>:<div className="card">
+      <div className="card-title">DRE - Demonstrativo de Resultado do Exercicio</div>
+      <div className="table-wrap"><table><tbody>
+        <tr style={{background:'#f0fdf4'}}><td style={{fontWeight:700}}>(+) Faturamento Bruto</td><td style={{fontWeight:700,textAlign:'right'}}>{fmt(d.dre?.faturamento)}</td></tr>
+        <tr><td style={{paddingLeft:24,color:'var(--text2)'}}>Contas a Receber (recebido)</td><td style={{textAlign:'right'}}>{fmt(d.jaRecebido)}</td></tr>
+        <tr><td style={{paddingLeft:24,color:'var(--text2)'}}>Fluxo de Caixa (entradas)</td><td style={{textAlign:'right'}}>{fmt((d.dre?.faturamento||0)-d.jaRecebido)}</td></tr>
+        <tr style={{background:'#fef2f2'}}><td style={{fontWeight:700}}>(-) Custo Fixo</td><td style={{fontWeight:700,textAlign:'right',color:'var(--red)'}}>{fmt(d.dre?.custoFixo)}</td></tr>
+        <tr style={{background:'#fef2f2'}}><td style={{fontWeight:700}}>(-) Custo Variavel</td><td style={{fontWeight:700,textAlign:'right',color:'var(--red)'}}>{fmt(d.dre?.custoVariavel)}</td></tr>
+        <tr style={{background:'#fef2f2'}}><td style={{fontWeight:700}}>(-) Total de Despesas</td><td style={{fontWeight:700,textAlign:'right',color:'var(--red)'}}>{fmt(d.dre?.totalDespesas)}</td></tr>
+        <tr style={{background:d.dre?.resultado>=0?'#dcfce7':'#fee2e2'}}><td style={{fontWeight:700,fontSize:16}}>(=) Resultado do Periodo</td><td style={{fontWeight:700,fontSize:16,textAlign:'right',color:d.dre?.resultado>=0?'var(--green)':'var(--red)'}}>{fmt(d.dre?.resultado)}</td></tr>
+      </tbody></table></div>
+      <p style={{fontSize:11,color:'var(--text2)',marginTop:16}}>Metodo Linha Reta | Base legal: IN RFB n 1.700/2017</p>
+    </div>}
+  </>;
+}
+
+/* ==================== PATRIMONIO ==================== */
+function Patrimonio({units:UL,user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const empty={name:'',purchaseValue:'',purchaseYear:new Date().getFullYear(),unitId:'',category:'',observation:''};
+  const [form,setForm]=useState(empty);
+  const load=()=>{api('/assets').then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[]);
+  const save=async()=>{
+    if(!form.name||!form.purchaseValue||!form.unitId||!form.category){alert('Preencha campos obrigatorios');return}
+    const payload={...form,unitId:Number(form.unitId),purchaseYear:Number(form.purchaseYear),purchaseValue:String(form.purchaseValue)};
+    if(editing){await api(`/assets/${editing}`,{method:'PUT',body:JSON.stringify(payload)})}
+    else{await api('/assets',{method:'POST',body:JSON.stringify(payload)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir?')){await api(`/assets/${id}`,{method:'DELETE'});load()}};
+  const yr=new Date().getFullYear();
+  const calc=items.map(item=>{const rate=DEPRECIATION[item.category]||0.10;const years=yr-item.purchaseYear;const da=Number(item.purchaseValue)*rate;const dac=Math.min(da*years,Number(item.purchaseValue));const va=Math.max(Number(item.purchaseValue)-dac,0);return{...item,rate,da,dac,va}});
+  const totC=calc.reduce((s,i)=>s+Number(i.purchaseValue),0);const totA=calc.reduce((s,i)=>s+i.va,0);const totD=calc.reduce((s,i)=>s+i.dac,0);
+  return <>
+    <div className="kpi-grid">
+      <div className="kpi-card"><div className="label">Valor de Compra Total</div><div className="value">{fmt(totC)}</div></div>
+      <div className="kpi-card"><div className="label">Valor Atual Total</div><div className="value success">{fmt(totA)}</div></div>
+      <div className="kpi-card"><div className="label">Depreciacao Acumulada</div><div className="value danger">{fmt(totD)}</div></div>
+    </div>
+    <div style={{marginBottom:16}}><button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Novo Bem</button></div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Bem</th><th>Unidade</th><th>Categoria</th><th>Ano</th><th>V. Compra</th><th>V. Atual</th><th>Dep. Acum.</th><th>Dep. Anual</th><th>Taxa</th><th>Acoes</th></tr></thead>
+    <tbody>{calc.length===0?<tr><td colSpan={10}><div className="empty-state"><p>Nenhum bem cadastrado</p></div></td></tr>:calc.map(item=>{const u=UL.find(u=>u.id===item.unitId);return <tr key={item.id}>
+      <td>{item.name}</td><td>{u?.abbreviation||'-'}</td><td>{item.category}</td><td>{item.purchaseYear}</td>
+      <td>{fmt(item.purchaseValue)}</td><td style={{color:'var(--green)'}}>{fmt(item.va)}</td>
+      <td style={{color:'var(--red)'}}>{fmt(item.dac)}</td><td>{fmt(item.da)}</td><td>{(item.rate*100).toFixed(0)}% a.a.</td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({...item,unitId:String(item.unitId),purchaseValue:item.purchaseValue});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {user.role==='Admin'&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>})}</tbody></table></div></div>
+    <p style={{fontSize:11,color:'var(--text2)',marginTop:8}}>Depreciacao: Metodo Linha Reta. Moveis/Equipamentos/Ferramentas: 10% a.a. | Computadores/Veiculos: 20% a.a. | Instalacoes: 4% a.a. | Base legal: IN RFB n 1.700/2017</p>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Bem':'Novo Bem'}>
+      <div className="form-group"><label>Nome do Bem *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+      <div className="form-row"><div className="form-group"><label>Valor de Compra *</label><input type="number" step="0.01" value={form.purchaseValue} onChange={e=>setForm({...form,purchaseValue:e.target.value})}/></div><div className="form-group"><label>Ano de Compra *</label><input type="number" value={form.purchaseYear} onChange={e=>setForm({...form,purchaseYear:e.target.value})}/></div></div>
+      <div className="form-row"><div className="form-group"><label>Unidade *</label><select value={form.unitId} onChange={e=>setForm({...form,unitId:e.target.value})}><option value="">Selecione</option>{UL.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div><div className="form-group"><label>Categoria *</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}><option value="">Selecione</option>{ASSET_CATS.map(c=><option key={c}>{c}</option>)}</select></div></div>
+      <div className="form-group"><label>Observacao</label><textarea value={form.observation||''} onChange={e=>setForm({...form,observation:e.target.value})}/></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== USUARIOS ==================== */
+function Usuarios({user}){
+  const [items,setItems]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const empty={name:'',login:'',password:'',role:'Assistente'};
+  const [form,setForm]=useState(empty);
+  const load=()=>{api('/users').then(setItems).catch(()=>{})};
+  useEffect(()=>{load()},[]);
+  const save=async()=>{
+    if(!form.name||!form.login){alert('Nome e login obrigatorios');return}
+    if(!editing&&!form.password){alert('Senha obrigatoria para novo usuario');return}
+    if(editing){await api(`/users/${editing}`,{method:'PUT',body:JSON.stringify(form)})}
+    else{await api('/users',{method:'POST',body:JSON.stringify(form)})}
+    setShowForm(false);setEditing(null);setForm(empty);load();
+  };
+  const del=async id=>{if(confirm('Excluir usuario?')){await api(`/users/${id}`,{method:'DELETE'});load()}};
+  return <>
+    <div style={{marginBottom:16}}><button className="btn btn-primary" onClick={()=>{setForm(empty);setEditing(null);setShowForm(true)}}>+ Novo Usuario</button></div>
+    <div className="card"><div className="table-wrap"><table><thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Acoes</th></tr></thead>
+    <tbody>{items.map(item=><tr key={item.id}>
+      <td>{item.name}</td><td>{item.login}</td><td><StatusBadge status={item.role}/></td>
+      <td><div className="actions-cell">
+        <button className="btn btn-outline btn-sm" onClick={()=>{setForm({name:item.name,login:item.login,password:'',role:item.role});setEditing(item.id);setShowForm(true)}}>Editar</button>
+        {item.id!==user.id&&<button className="btn btn-danger btn-sm" onClick={()=>del(item.id)}>X</button>}
+      </div></td>
+    </tr>)}</tbody></table></div></div>
+    <div className="card" style={{fontSize:13,color:'var(--text2)'}}>
+      <strong style={{color:'var(--navy)'}}>Perfis e Permissoes:</strong><br/><br/>
+      <strong>Admin:</strong> Acesso total, baixa em lote, gerenciar usuarios, importar planilhas, excluir registros<br/>
+      <strong>Gerente:</strong> Todos os modulos financeiros, importar planilhas, sem gerenciar usuarios<br/>
+      <strong>Assistente:</strong> Visualizar tudo, baixar pagamentos individuais, sem importar/excluir/gerenciar usuarios
+    </div>
+    <Modal show={showForm} onClose={()=>setShowForm(false)} title={editing?'Editar Usuario':'Novo Usuario'}>
+      <div className="form-group"><label>Nome Completo *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+      <div className="form-group"><label>Login *</label><input value={form.login} onChange={e=>setForm({...form,login:e.target.value})}/>{editing&&<p style={{fontSize:11,color:'var(--orange)',marginTop:4}}>Ao alterar o login, o usuario precisara usar o novo login para acessar</p>}</div>
+      <div className="form-group"><label>{editing?'Nova Senha (deixe vazio para manter)':'Senha *'}</label><input type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></div>
+      <div className="form-group"><label>Perfil</label><select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option>Admin</option><option>Gerente</option><option>Assistente</option></select></div>
+      <div className="modal-actions"><button className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </Modal>
+  </>;
+}
+
+/* ==================== MENU & APP ==================== */
+const MENU=[
+  {key:'dashboard',icon:'\u{1F3E0}',label:'Dashboard'},
+  {key:'rotina',icon:'\u{1F5D3}️',label:'Rotina Diaria',hasBadge:true},
+  {key:'pagar',icon:'\u{1F4CB}',label:'Contas a Pagar'},
+  {key:'receber',icon:'\u{1F4B0}',label:'Contas a Receber'},
+  {key:'fluxo',icon:'\u{1F4B5}',label:'Fluxo de Caixa'},
+  {key:'comissoes',icon:'\u{1F488}',label:'Comissoes'},
+  {key:'fornecedores',icon:'\u{1F3E2}',label:'Fornecedores'},
+  {key:'barbeiros',icon:'✂️',label:'Barbeiros'},
+  {key:'unidades',icon:'\u{1F4CD}',label:'Unidades'},
+  {key:'relatorios',icon:'\u{1F4CA}',label:'Relatorios'},
+  {key:'patrimonio',icon:'\u{1F3DB}️',label:'Patrimonio'},
+  {key:'usuarios',icon:'\u{1F465}',label:'Usuarios',adminOnly:true},
+];
+
+function App(){
+  const [user,setUser]=useState(null);
+  const [token,setToken]=useState(localStorage.getItem('bpo_token'));
+  const [page,setPage]=useState('dashboard');
+  const [sideOpen,setSideOpen]=useState(false);
+  const [UL,setUL]=useState([]);
+  const [BL,setBL]=useState([]);
+  const [alertCount,setAlertCount]=useState(0);
+  const [loading,setLoading]=useState(true);
+
+  const login=async(l,p)=>{
+    const res=await api('/auth/login',{method:'POST',body:JSON.stringify({login:l,password:p})});
+    localStorage.setItem('bpo_token',res.token);setToken(res.token);setUser(res.user);
+  };
+  const logout=()=>{api('/auth/logout',{method:'POST'}).catch(()=>{});localStorage.removeItem('bpo_token');setToken(null);setUser(null)};
+
+  useEffect(()=>{
+    if(!token){setLoading(false);return}
+    api('/auth/me').then(u=>{setUser(u);setLoading(false)}).catch(()=>{localStorage.removeItem('bpo_token');setToken(null);setLoading(false)});
+  },[token]);
+
+  const loadUnits=useCallback(()=>{if(user)api('/units').then(setUL).catch(()=>{})},[user]);
+  const loadBarbers=useCallback(()=>{if(user)api('/barbers').then(setBL).catch(()=>{})},[user]);
+  useEffect(()=>{if(user){loadUnits();loadBarbers()}},[user,loadUnits,loadBarbers]);
+
+  useEffect(()=>{
+    if(!user)return;
+    api('/dashboard').then(d=>{
+      const count=(d.vencidas||0)+(d.vencem_hoje||0);setAlertCount(count);
+      if(typeof Notification!=='undefined'){
+        if(Notification.permission==='default')Notification.requestPermission();
+        if(Notification.permission==='granted'){
+          if(d.vencidas>0)new Notification('BPO Casa 77',{body:`${d.vencidas} conta(s) vencida(s)!`});
+          if(d.vencem_hoje>0)new Notification('BPO Casa 77',{body:`${d.vencem_hoje} conta(s) vence(m) hoje!`});
+        }
+      }
+    }).catch(()=>{});
+  },[user]);
+
+  if(loading)return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--gray)'}}><div style={{textAlign:'center'}}><div className="brand" style={{color:'var(--orange)',fontSize:28,fontWeight:700,marginBottom:8}}>Casa 77</div><p style={{color:'var(--text2)'}}>Carregando...</p></div></div>;
+  if(!user)return <AuthCtx.Provider value={{login}}><Login/></AuthCtx.Provider>;
+
+  const titles={dashboard:'Dashboard',rotina:'Rotina Diaria',pagar:'Contas a Pagar',receber:'Contas a Receber',fluxo:'Fluxo de Caixa',comissoes:'Comissoes',fornecedores:'Fornecedores',barbeiros:'Barbeiros',unidades:'Unidades',relatorios:'Relatorios',patrimonio:'Patrimonio',usuarios:'Usuarios'};
+
+  return <div className="layout">
+    <button className="hamburger" onClick={()=>setSideOpen(!sideOpen)}>{sideOpen?'✕':'☰'}</button>
+    <div className={`sidebar ${sideOpen?'open':''}`}>
+      <div className="sidebar-brand">Casa 77</div>
+      <div className="sidebar-nav">
+        {MENU.filter(m=>!m.adminOnly||user.role==='Admin').map(m=>
+          <div key={m.key} className={`sidebar-item ${page===m.key?'active':''}`} onClick={()=>{setPage(m.key);setSideOpen(false)}}>
+            <span>{m.icon}</span><span>{m.label}</span>
+            {m.hasBadge&&alertCount>0&&<span className="badge">{alertCount}</span>}
+          </div>
+        )}
+      </div>
+      <div className="sidebar-user">
+        <span>{user.name} ({user.role})</span>
+        <button className="btn btn-sm" style={{background:'rgba(255,255,255,.1)',color:'#fff',border:'none'}} onClick={logout}>Sair</button>
+      </div>
+    </div>
+    <div className="main">
+      <div className="header"><h2>{titles[page]}</h2></div>
+      {page==='dashboard'&&<Dashboard units={UL}/>}
+      {page==='rotina'&&<RotinaPage units={UL} user={user}/>}
+      {page==='pagar'&&<ContasPagar units={UL} user={user}/>}
+      {page==='receber'&&<ContasReceber units={UL} user={user}/>}
+      {page==='fluxo'&&<FluxoCaixa units={UL} user={user}/>}
+      {page==='comissoes'&&<Comissoes units={UL} barbersList={BL} user={user}/>}
+      {page==='fornecedores'&&<Fornecedores units={UL} user={user}/>}
+      {page==='barbeiros'&&<Barbeiros units={UL} user={user}/>}
+      {page==='unidades'&&<UnidadesPage units={UL} user={user} reloadUnits={loadUnits}/>}
+      {page==='relatorios'&&<Relatorios units={UL}/>}
+      {page==='patrimonio'&&<Patrimonio units={UL} user={user}/>}
+      {page==='usuarios'&&user.role==='Admin'&&<Usuarios user={user}/>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
