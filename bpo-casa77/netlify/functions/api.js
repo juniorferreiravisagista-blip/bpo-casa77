@@ -17,7 +17,7 @@ function genToken() {
 // todas as sessões e recria a lista de usuários apenas com os acessos abaixo.
 // Como roda só quando o marcador muda, deploys seguintes não apagam mais nada,
 // preservando tudo o que for criado depois.
-const SEED_VERSION = "full-reset-2026-05-28";
+const SEED_VERSION = "full-reset-2026-05-28b";
 
 function makeUser(id, username, name, role, password) {
   const salt = crypto.randomBytes(16).toString("hex");
