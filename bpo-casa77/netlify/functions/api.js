@@ -12,16 +12,39 @@ function genToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+// Marcador de "reset". Ao subir este valor, o próximo acesso após o deploy
+// zera a lista de usuários UMA única vez e recria apenas os acessos abaixo.
+// Como roda só quando o marcador muda, deploys seguintes não apagam os
+// usuários que vierem a ser criados depois.
+const SEED_VERSION = "reset-2026-05-28";
+
+function makeUser(id, username, name, role, password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return {
+    id, username, name, role, salt,
+    hash: hashPwd(password, salt),
+    createdAt: new Date().toISOString(),
+  };
+}
+
 async function ensureAdmin() {
   const store = getStore({ name: STORE_USERS, consistency: "strong" });
+  const seeded = await store.get("seedVersion", { type: "text" });
+
+  // Reset único: zera todos os usuários e deixa apenas o master + o novo acesso.
+  if (seeded !== SEED_VERSION) {
+    await store.setJSON("users", [
+      makeUser("1", "master", "Master", "admin", "master@casa77"),
+      makeUser("2", "casa77", "Casa 77", "admin", "casa77@2026"),
+    ]);
+    await store.set("seedVersion", SEED_VERSION);
+    return;
+  }
+
+  // Fluxo normal: garante ao menos um admin caso a base esteja vazia.
   const users = await store.get("users", { type: "json" });
   if (!users || users.length === 0) {
-    const salt = crypto.randomBytes(16).toString("hex");
-    await store.setJSON("users", [{
-      id: "1", username: "admin", name: "Administrador",
-      role: "admin", salt, hash: hashPwd("casa77@admin", salt),
-      createdAt: new Date().toISOString(),
-    }]);
+    await store.setJSON("users", [makeUser("1", "master", "Master", "admin", "master@casa77")]);
   }
 }
 
